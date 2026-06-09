@@ -56,8 +56,6 @@ interface ToolbarProps {
   quickAdd: boolean;
   onQuickAddChange: (v: boolean) => void;
   sets: { id: string; name: string }[];
-  totalOwned: number;
-  uniqueOwned: number;
 }
 
 export function Toolbar({
@@ -86,8 +84,6 @@ export function Toolbar({
   quickAdd,
   onQuickAddChange,
   sets,
-  totalOwned,
-  uniqueOwned,
 }: ToolbarProps) {
   const setOptions: FilterSelectOption[] = [
     { value: '', label: 'Tous les sets' },
@@ -165,11 +161,6 @@ export function Toolbar({
         </div>
       </div>
 
-      <div className="toolbar__stats">
-        <span>
-          <strong>{uniqueOwned}</strong> uniques · <strong>{totalOwned}</strong> total
-        </span>
-      </div>
     </div>
   );
 }

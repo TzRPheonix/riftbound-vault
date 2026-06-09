@@ -1,0 +1,142 @@
+.cstats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Left side ── */
+.cstats__left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 220px;
+}
+
+.cstats__counters {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.cstats__counter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cstats__counter-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.cstats__counter-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.cstats__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cstats__mode-btn {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.cstats__mode-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(201, 162, 39, 0.3);
+}
+
+.cstats__mode-btn--active {
+  border-color: rgba(201, 162, 39, 0.55);
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--gold);
+}
+
+/* ── Right side ── */
+.cstats__sets {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.cstats__sets-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.1rem;
+}
+
+.cstats__set-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cstats__set-name {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cstats__set-bar {
+  width: 80px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cstats__set-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.cstats__set-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.cstats__set-pct {
+  font-size: 0.78rem;
+  color: var(--gold);
+  white-space: nowrap;
+  min-width: 42px;
+  text-align: right;
+}
+
+.cstats__set-pct--complete {
+  color: #5ecb7c;
+}
+
+@media (max-width: 640px) {
+  .cstats__set-bar {
+    width: 50px;
+  }
+}

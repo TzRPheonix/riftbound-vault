@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Card, Collection, DomainId } from './types';
 import { CardLightbox } from './components/CardLightbox';
 import { CardTile } from './components/CardTile';
+import { CollectionStats, type StatMode } from './components/CollectionStats';
 import { DeckPanel } from './components/DeckPanel';
 import { Toolbar } from './components/Toolbar';
 import {
   filterCards,
   isLandscapeCard,
   ownedCount,
+  playableCopies,
   uniqueRarities,
   uniqueSacrificeValues,
   uniqueSets,
@@ -50,6 +52,7 @@ function App() {
   const [sacrificeFilter, setSacrificeFilter] = useState('');
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [quickAdd, setQuickAdd] = useState(() => loadQuickAdd());
+  const [statMode, setStatMode] = useState<StatMode>('total');
   const [zoomCardId, setZoomCardId] = useState<string | null>(null);
   const [selectedLegendId, setSelectedLegendId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,17 +163,35 @@ function App() {
     }
   }, [suggestions, selectedLegendId]);
 
-  const { totalOwned, uniqueOwned } = useMemo(() => {
+  const { totalOwned, uniqueOwned, fullsetOwned } = useMemo(() => {
     let total = 0;
     let unique = 0;
-    for (const qty of Object.values(collection)) {
+    let fullset = 0;
+    for (const [id, qty] of Object.entries(collection)) {
       if (qty > 0) {
         unique += 1;
         total += qty;
+        fullset += playableCopies(collection, id);
       }
     }
-    return { totalOwned: total, uniqueOwned: unique };
+    return { totalOwned: total, uniqueOwned: unique, fullsetOwned: fullset };
   }, [collection]);
+
+  const filteredOwned = useMemo(
+    () => filtered.reduce((sum, c) => sum + ownedCount(collection, c.id), 0),
+    [filtered, collection],
+  );
+
+  const setStats = useMemo(() =>
+    sets.map((s) => {
+      const setCards = cards.filter((c) => c.set === s.id);
+      const total = setCards.length;
+      const ownedUnique = setCards.filter((c) => ownedCount(collection, c.id) > 0).length;
+      const pct = total > 0 ? (ownedUnique / total) * 100 : 0;
+      return { id: s.id, name: s.name, total, ownedUnique, pct };
+    }),
+    [sets, cards, collection],
+  );
 
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -290,8 +311,15 @@ function App() {
               quickAdd={quickAdd}
               onQuickAddChange={setQuickAdd}
               sets={sets}
+            />
+            <CollectionStats
               totalOwned={totalOwned}
               uniqueOwned={uniqueOwned}
+              fullsetOwned={fullsetOwned}
+              filteredOwned={filteredOwned}
+              setStats={setStats}
+              mode={statMode}
+              onModeChange={setStatMode}
             />
             <p className="results-count">
               {filtered.length} cartes ·{' '}
