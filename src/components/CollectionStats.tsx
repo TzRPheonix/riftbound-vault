@@ -22,7 +22,7 @@ export function CollectionStats({
   setStats,
 }: CollectionStatsProps) {
   const valueStr = collectionValue > 0
-    ? collectionValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+    ? collectionValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
     : '—';
 
   return (
