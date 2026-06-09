@@ -1,0 +1,77 @@
+export type DomainId =
+  | 'fury'
+  | 'calm'
+  | 'mind'
+  | 'body'
+  | 'chaos'
+  | 'order';
+
+export type CardOrientation = 'portrait' | 'landscape';
+
+export type CardTypeId =
+  | 'unit'
+  | 'spell'
+  | 'gear'
+  | 'rune'
+  | 'battlefield'
+  | 'legend'
+  | 'token';
+
+/** Extra runes paid on top of base cost (often consumed, e.g. Accelerate). */
+export interface AdditionalRuneCost {
+  energy: number | null;
+  runes: string[];
+  optional: boolean;
+}
+
+export interface Card {
+  id: string;
+  code: string;
+  name: string;
+  set: string;
+  setName: string;
+  collectorNumber: number;
+  domains: DomainId[];
+  types: CardTypeId[];
+  rarity: string;
+  orientation: CardOrientation;
+  image: string;
+  /** Base rune cost (top-left on the card). */
+  energy: number | null;
+  /** Might (top-right on the card). */
+  might: number | null;
+  /** Runes sacrificed to activate (Recycle / [Add], etc.). */
+  power: number | null;
+  additionalCosts: AdditionalRuneCost[] | null;
+  text: string;
+}
+
+export type Collection = Record<string, number>;
+
+export interface CollectionExport {
+  version: 1;
+  exportedAt: string;
+  collection: Collection;
+}
+
+export interface DeckSlot {
+  card: Card;
+  count: number;
+}
+
+export interface DeckSuggestion {
+  legend: Card;
+  mainSlots: number;
+  mainTarget: number;
+  runeSlots: number;
+  runeTarget: number;
+  battlefieldCount: number;
+  battlefieldTarget: number;
+  playableMain: Card[];
+  playableRunes: Card[];
+  playableBattlefields: Card[];
+  completeness: number;
+  missingMain: number;
+  missingRunes: number;
+  missingBattlefields: number;
+}

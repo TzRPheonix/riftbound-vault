@@ -1,0 +1,207 @@
+.card-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: default;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.card-tile--zoomable {
+  cursor: zoom-in;
+}
+
+.card-tile--quick-add {
+  cursor: pointer;
+}
+
+.card-tile--quick-add:active .card-tile__frame {
+  transform: scale(0.97);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.card-tile--selected .card-tile__frame {
+  box-shadow:
+    0 0 0 2px var(--card-accent),
+    0 12px 40px rgba(201, 162, 39, 0.35);
+}
+
+.card-tile__frame {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  width: 100%;
+  background: linear-gradient(145deg, #1a1520 0%, #0d0b10 100%);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-tile__frame--portrait {
+  aspect-ratio: 744 / 1039;
+}
+
+/* Battlefields — image réelle 1038×744 (paysage) */
+.card-tile__frame--landscape,
+.card-tile[data-layout='landscape'] .card-tile__frame {
+  aspect-ratio: 1038 / 744;
+}
+
+.card-tile__frame--landscape .card-tile__image,
+.card-tile[data-layout='landscape'] .card-tile__image {
+  object-fit: contain;
+  object-position: center;
+}
+
+.card-tile:hover .card-tile__frame {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(201, 162, 39, 0.25);
+}
+
+.card-tile__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.card-tile__placeholder {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.card-tile__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+
+.card-tile:hover .card-tile__shine {
+  opacity: 1;
+}
+
+.card-tile__badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  top: auto;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e8c547 0%, #a67c1a 100%);
+  color: #1a1208;
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.card-tile__meta {
+  padding: 0 0.15rem;
+}
+
+.card-tile__name {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.card-tile__code {
+  margin: 0.15rem 0 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-tile__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.card-tile:hover .card-tile__controls,
+.card-tile--owned .card-tile__controls {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.qty-btn {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: 6px;
+  background: rgba(20, 16, 28, 0.9);
+  color: var(--gold);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: rgba(201, 162, 39, 0.15);
+  border-color: var(--gold);
+}
+
+.qty-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.qty-value {
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-tile--compact .card-tile__meta {
+  display: none;
+}
+
+.card-tile--compact .card-tile__controls {
+  opacity: 1;
+  transform: none;
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8, 6, 12, 0.85);
+  padding: 0.2rem 0.35rem;
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+.card-tile--compact .qty-btn {
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.95rem;
+}

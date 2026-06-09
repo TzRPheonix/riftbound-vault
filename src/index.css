@@ -1,0 +1,46 @@
+:root {
+  --bg-deep: #08060e;
+  --bg-mid: #12101a;
+  --surface: #1a1624;
+  --gold: #c9a227;
+  --text-primary: #f2ebe0;
+  --text-muted: #9a9288;
+  --font-display: 'Cinzel', Georgia, serif;
+  --font-body: 'Source Sans 3', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(201, 162, 39, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(74, 127, 212, 0.06), transparent),
+    linear-gradient(180deg, var(--bg-mid) 0%, var(--bg-deep) 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
