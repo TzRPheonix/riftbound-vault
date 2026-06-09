@@ -94,9 +94,9 @@ for (const episodeId of EPISODES) {
       const cm = card.prices?.cardmarket;
       if (!cm) continue;
       prices[code] = {
-        lowest:   cm.lowest_near_mint_EU_only ?? cm.lowest_near_mint ?? null,
-        avg30d:   cm['30d_average']            ?? null,
-        currency: cm.currency                  ?? 'EUR',
+        lowest:   cm.lowest_near_mint_FR_EU_only ?? cm.lowest_near_mint_FR ?? cm.lowest_near_mint_EU_only ?? cm.lowest_near_mint ?? null,
+        avg30d:   cm['30d_average'] ?? null,
+        currency: cm.currency      ?? 'EUR',
       };
     }
 
