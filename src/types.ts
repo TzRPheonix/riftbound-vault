@@ -48,6 +48,22 @@ export interface Card {
 
 export type Collection = Record<string, number>;
 
+export interface MetaDeckSlot {
+  cardId: string;
+  count: number;
+}
+
+export interface MetaDeck {
+  id: string;
+  name: string;
+  champion: string;
+  tier: 'S' | 'A' | 'B' | 'C';
+  legendId: string;
+  main: MetaDeckSlot[];
+  runes: MetaDeckSlot[];
+  battlefields: MetaDeckSlot[];
+}
+
 export interface CollectionExport {
   version: 1;
   exportedAt: string;

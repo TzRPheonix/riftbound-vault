@@ -4,7 +4,10 @@ import { CardLightbox } from './components/CardLightbox';
 import { CardTile } from './components/CardTile';
 import { CollectionStats, type StatMode } from './components/CollectionStats';
 import { DeckPanel } from './components/DeckPanel';
+import { MetaDeckPanel } from './components/MetaDeckPanel';
 import { Toolbar } from './components/Toolbar';
+import { META_DECKS } from './data/meta-decks';
+import { buildCardMap, calcMetaDeckResult } from './lib/meta-deck';
 import {
   filterCards,
   isLandscapeCard,
@@ -25,7 +28,7 @@ import {
 } from './lib/storage';
 import './App.css';
 
-type Tab = 'collection' | 'decks';
+type Tab = 'collection' | 'decks' | 'meta';
 
 const QUICK_ADD_KEY = 'riftbound-vault-quick-add';
 
@@ -157,6 +160,13 @@ function App() {
     [cards, collection],
   );
 
+  const cardMap = useMemo(() => buildCardMap(cards), [cards]);
+
+  const metaResults = useMemo(
+    () => META_DECKS.map((d) => calcMetaDeckResult(d, cardMap, collection)),
+    [cardMap, collection],
+  );
+
   useEffect(() => {
     if (suggestions.length > 0 && !selectedLegendId) {
       setSelectedLegendId(suggestions[0].legend.id);
@@ -280,6 +290,14 @@ function App() {
             <span className="tab__badge">{suggestions.length}</span>
           )}
         </button>
+        <button
+          type="button"
+          className={`tab ${tab === 'meta' ? 'tab--active' : ''}`}
+          onClick={() => setTab('meta')}
+        >
+          Meta Decks
+          <span className="tab__badge">{META_DECKS.length}</span>
+        </button>
       </div>
 
       <main className="app-main">
@@ -342,12 +360,18 @@ function App() {
               ))}
             </div>
           </>
-        ) : (
+        ) : tab === 'decks' ? (
           <DeckPanel
             suggestions={suggestions}
             collection={collection}
             selectedLegendId={selectedLegendId}
             onSelectLegend={setSelectedLegendId}
+            onCollectionChange={updateQty}
+          />
+        ) : (
+          <MetaDeckPanel
+            results={metaResults}
+            collection={collection}
             onCollectionChange={updateQty}
           />
         )}
