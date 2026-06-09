@@ -97,15 +97,21 @@
   opacity: 1;
 }
 
-.card-tile__badge {
+.card-tile__badges {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  top: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+}
+
+.card-tile__badge {
   min-width: 1.75rem;
-  height: 1.75rem;
-  padding: 0 0.4rem;
-  border-radius: 999px;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border-radius: 5px;
   background: linear-gradient(180deg, #e8c547 0%, #a67c1a 100%);
   color: #1a1208;
   font-weight: 700;
@@ -152,17 +158,18 @@
 }
 
 .card-tile__foil-badge {
-  position: absolute;
-  top: 7px;
-  left: 7px;
-  padding: 0.1rem 0.4rem;
+  min-width: 1.75rem;
+  height: 1.5rem;
+  padding: 0 0.45rem;
   border-radius: 5px;
-  background: linear-gradient(135deg, #a855f7, #3b82f6, #06b6d4);
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
   color: #fff;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.02em;
 }
 
 .qty-row {

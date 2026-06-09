@@ -57,8 +57,12 @@ export function CardTile({
         )}
         <div className="card-tile__shine" aria-hidden />
         {foil > 0 && <div className="card-tile__holo" aria-hidden />}
-        {owned > 0 && <span className="card-tile__badge">{owned}</span>}
-        {foil > 0 && <span className="card-tile__foil-badge">✦{foil}</span>}
+        {(owned > 0 || foil > 0) && (
+          <div className="card-tile__badges">
+            {foil > 0 && <span className="card-tile__foil-badge">✦ {foil}</span>}
+            <span className="card-tile__badge">{owned + foil}</span>
+          </div>
+        )}
       </div>
 
       {!compact && (

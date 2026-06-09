@@ -53,6 +53,8 @@ interface ToolbarProps {
   sacrificeValues: number[];
   ownedOnly: boolean;
   onOwnedOnlyChange: (v: boolean) => void;
+  foilOnly: boolean;
+  onFoilOnlyChange: (v: boolean) => void;
   quickAdd: boolean;
   onQuickAddChange: (v: boolean) => void;
   sets: { id: string; name: string }[];
@@ -81,6 +83,8 @@ export function Toolbar({
   sacrificeValues,
   ownedOnly,
   onOwnedOnlyChange,
+  foilOnly,
+  onFoilOnlyChange,
   quickAdd,
   onQuickAddChange,
   sets,
@@ -157,6 +161,14 @@ export function Toolbar({
               onChange={(e) => onOwnedOnlyChange(e.target.checked)}
             />
             <span>Possédées</span>
+          </label>
+          <label className="toolbar__toggle">
+            <input
+              type="checkbox"
+              checked={foilOnly}
+              onChange={(e) => onFoilOnlyChange(e.target.checked)}
+            />
+            <span>Foil ✦</span>
           </label>
         </div>
       </div>

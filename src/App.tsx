@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Card, Collection, DomainId } from './types';
 import { CardLightbox } from './components/CardLightbox';
 import { CardTile } from './components/CardTile';
-import { CollectionStats, type StatMode } from './components/CollectionStats';
+import { CollectionStats } from './components/CollectionStats';
 import { DeckPanel } from './components/DeckPanel';
 import { MetaDeckPanel } from './components/MetaDeckPanel';
 import { Toolbar } from './components/Toolbar';
@@ -13,7 +13,6 @@ import {
   filterCards,
   isLandscapeCard,
   ownedCount,
-  playableCopies,
   uniqueRarities,
   uniqueSacrificeValues,
   uniqueSets,
@@ -57,9 +56,9 @@ function App() {
   const [mightFilter, setMightFilter] = useState('');
   const [sacrificeFilter, setSacrificeFilter] = useState('');
   const [ownedOnly, setOwnedOnly] = useState(false);
+  const [foilOnly, setFoilOnly] = useState(false);
   const [quickAdd, setQuickAdd] = useState(() => loadQuickAdd());
   const [foilCollection, setFoilCollection] = useState<Collection>(() => loadFoils());
-  const [statMode, setStatMode] = useState<StatMode>('total');
   const [zoomCardId, setZoomCardId] = useState<string | null>(null);
   const [selectedLegendId, setSelectedLegendId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,40 +109,50 @@ function App() {
     });
   }, []);
 
+  const effectiveCollection = useMemo<Collection>(() => {
+    const merged: Collection = { ...collection };
+    for (const [id, qty] of Object.entries(foilCollection)) {
+      if (qty > 0) merged[id] = (merged[id] ?? 0) + qty;
+    }
+    return merged;
+  }, [collection, foilCollection]);
+
   const sets = useMemo(() => uniqueSets(cards), [cards]);
   const rarities = useMemo(() => uniqueRarities(cards), [cards]);
   const energyValues = useMemo(() => uniqueStatValues(cards, 'energy'), [cards]);
   const mightValues = useMemo(() => uniqueStatValues(cards, 'might'), [cards]);
   const sacrificeValues = useMemo(() => uniqueSacrificeValues(cards), [cards]);
 
-  const filtered = useMemo(
-    () =>
-      filterCards(cards, {
-        search,
-        set: setFilter,
-        domain: domainFilter as DomainId | '',
-        type: typeFilter,
-        rarityFilter,
-        energyFilter,
-        mightFilter,
-        sacrificeFilter,
-        ownedOnly,
-        collection,
-      }),
-    [
-      cards,
+  const filtered = useMemo(() => {
+    const base = filterCards(cards, {
       search,
-      setFilter,
-      domainFilter,
-      typeFilter,
+      set: setFilter,
+      domain: domainFilter as DomainId | '',
+      type: typeFilter,
       rarityFilter,
       energyFilter,
       mightFilter,
       sacrificeFilter,
       ownedOnly,
-      collection,
-    ],
-  );
+      collection: effectiveCollection,
+    });
+    if (foilOnly) return base.filter((c) => (foilCollection[c.id] ?? 0) > 0);
+    return base;
+  }, [
+    cards,
+    search,
+    setFilter,
+    domainFilter,
+    typeFilter,
+    rarityFilter,
+    energyFilter,
+    mightFilter,
+    sacrificeFilter,
+    ownedOnly,
+    foilOnly,
+    effectiveCollection,
+    foilCollection,
+  ]);
 
   const zoomIndex = useMemo(() => {
     if (!zoomCardId) return -1;
@@ -176,16 +185,16 @@ function App() {
   }, [typeFilter, filtered]);
 
   const suggestions = useMemo(
-    () => suggestDecks(cards, collection),
-    [cards, collection],
+    () => suggestDecks(cards, effectiveCollection),
+    [cards, effectiveCollection],
   );
 
   const cardMap = useMemo(() => buildCardMap(cards), [cards]);
   const variantMap = useMemo(() => buildVariantMap(cards), [cards]);
 
   const metaResults = useMemo(
-    () => META_DECKS.map((d) => calcMetaDeckResult(d, cardMap, collection, variantMap)),
-    [cardMap, collection, variantMap],
+    () => META_DECKS.map((d) => calcMetaDeckResult(d, cardMap, effectiveCollection, variantMap)),
+    [cardMap, effectiveCollection, variantMap],
   );
 
   useEffect(() => {
@@ -194,34 +203,28 @@ function App() {
     }
   }, [suggestions, selectedLegendId]);
 
-  const { totalOwned, uniqueOwned, fullsetOwned } = useMemo(() => {
+  const { totalOwned, uniqueOwned } = useMemo(() => {
     let total = 0;
     let unique = 0;
-    let fullset = 0;
-    for (const [id, qty] of Object.entries(collection)) {
+    for (const [, qty] of Object.entries(effectiveCollection)) {
       if (qty > 0) {
         unique += 1;
         total += qty;
-        fullset += playableCopies(collection, id);
       }
     }
-    return { totalOwned: total, uniqueOwned: unique, fullsetOwned: fullset };
-  }, [collection]);
+    return { totalOwned: total, uniqueOwned: unique };
+  }, [effectiveCollection]);
 
-  const filteredOwned = useMemo(
-    () => filtered.reduce((sum, c) => sum + ownedCount(collection, c.id), 0),
-    [filtered, collection],
-  );
 
   const setStats = useMemo(() =>
     sets.map((s) => {
       const setCards = cards.filter((c) => c.set === s.id);
       const total = setCards.length;
-      const ownedUnique = setCards.filter((c) => ownedCount(collection, c.id) > 0).length;
+      const ownedUnique = setCards.filter((c) => ownedCount(effectiveCollection, c.id) > 0).length;
       const pct = total > 0 ? (ownedUnique / total) * 100 : 0;
       return { id: s.id, name: s.name, total, ownedUnique, pct };
     }),
-    [sets, cards, collection],
+    [sets, cards, effectiveCollection],
   );
 
   const handleExport = () => {
@@ -347,6 +350,8 @@ function App() {
               sacrificeValues={sacrificeValues}
               ownedOnly={ownedOnly}
               onOwnedOnlyChange={setOwnedOnly}
+              foilOnly={foilOnly}
+              onFoilOnlyChange={setFoilOnly}
               quickAdd={quickAdd}
               onQuickAddChange={setQuickAdd}
               sets={sets}
@@ -354,11 +359,7 @@ function App() {
             <CollectionStats
               totalOwned={totalOwned}
               uniqueOwned={uniqueOwned}
-              fullsetOwned={fullsetOwned}
-              filteredOwned={filteredOwned}
               setStats={setStats}
-              mode={statMode}
-              onModeChange={setStatMode}
             />
             <p className="results-count">
               {filtered.length} cartes ·{' '}
