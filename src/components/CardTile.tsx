@@ -6,7 +6,9 @@ import './CardTile.css';
 interface CardTileProps {
   card: Card;
   owned: number;
+  foil?: number;
   onChange: (delta: number) => void;
+  onFoilChange?: (delta: number) => void;
   compact?: boolean;
   selected?: boolean;
   quickAdd?: boolean;
@@ -16,7 +18,9 @@ interface CardTileProps {
 export function CardTile({
   card,
   owned,
+  foil = 0,
   onChange,
+  onFoilChange,
   compact = false,
   selected = false,
   quickAdd = false,
@@ -34,7 +38,7 @@ export function CardTile({
 
   return (
     <article
-      className={`card-tile ${landscape ? 'card-tile--landscape' : ''} ${compact ? 'card-tile--compact' : ''} ${selected ? 'card-tile--selected' : ''} ${owned > 0 ? 'card-tile--owned' : ''} ${quickAdd ? 'card-tile--quick-add' : 'card-tile--zoomable'}`}
+      className={`card-tile ${landscape ? 'card-tile--landscape' : ''} ${compact ? 'card-tile--compact' : ''} ${selected ? 'card-tile--selected' : ''} ${owned > 0 ? 'card-tile--owned' : ''} ${foil > 0 ? 'card-tile--foil' : ''} ${quickAdd ? 'card-tile--quick-add' : 'card-tile--zoomable'}`}
       data-layout={layout}
       style={{ '--card-accent': accent } as CSSProperties}
       onClick={handleTileClick}
@@ -52,7 +56,9 @@ export function CardTile({
           <div className="card-tile__placeholder">{card.name}</div>
         )}
         <div className="card-tile__shine" aria-hidden />
+        {foil > 0 && <div className="card-tile__holo" aria-hidden />}
         {owned > 0 && <span className="card-tile__badge">{owned}</span>}
+        {foil > 0 && <span className="card-tile__foil-badge">✦{foil}</span>}
       </div>
 
       {!compact && (
@@ -72,6 +78,16 @@ export function CardTile({
         <button type="button" className="qty-btn" onClick={() => onChange(1)}>
           +
         </button>
+        {onFoilChange && owned > 0 && (
+          <button
+            type="button"
+            className={`foil-btn ${foil > 0 ? 'foil-btn--active' : ''}`}
+            title={`Copies foil : ${foil}/${owned}`}
+            onClick={() => onFoilChange(foil >= owned ? -(foil) : 1)}
+          >
+            ✦{foil > 0 ? foil : ''}
+          </button>
+        )}
       </div>
     </article>
   );

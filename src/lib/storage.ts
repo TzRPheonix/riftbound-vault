@@ -1,6 +1,7 @@
 import type { Collection, CollectionExport } from '../types';
 
 const STORAGE_KEY = 'riftbound-vault-collection-v1';
+const FOIL_KEY = 'riftbound-vault-foils-v1';
 
 export function loadCollection(): Collection {
   try {
@@ -42,6 +43,22 @@ function normalizeCollection(input: Collection): Collection {
     if (n > 0) out[id] = n;
   }
   return out;
+}
+
+export function loadFoils(): Collection {
+  try {
+    const raw = localStorage.getItem(FOIL_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Collection;
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+export function saveFoils(foils: Collection): void {
+  localStorage.setItem(FOIL_KEY, JSON.stringify(foils));
 }
 
 export function downloadJson(filename: string, content: string): void {

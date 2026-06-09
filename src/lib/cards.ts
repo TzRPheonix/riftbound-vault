@@ -151,6 +151,22 @@ export function filterCards(
   });
 }
 
+/** Maps each card ID to all IDs of the same card (name+set) across variants/alt-arts. */
+export function buildVariantMap(cards: Card[]): Map<string, string[]> {
+  const byName = new Map<string, string[]>();
+  for (const card of cards) {
+    const key = `${card.set}::${card.name}`;
+    const group = byName.get(key) ?? [];
+    group.push(card.id);
+    byName.set(key, group);
+  }
+  const result = new Map<string, string[]>();
+  for (const ids of byName.values()) {
+    for (const id of ids) result.set(id, ids);
+  }
+  return result;
+}
+
 export function uniqueSets(cards: Card[]): { id: string; name: string }[] {
   const map = new Map<string, string>();
   for (const c of cards) map.set(c.set, c.setName);

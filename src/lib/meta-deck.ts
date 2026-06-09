@@ -23,9 +23,19 @@ export interface MetaDeckResult {
   battlefieldSlots: SlotResult[];
 }
 
-function resolveSlot(slot: MetaDeckSlot, cardMap: Map<string, Card>, collection: Collection): SlotResult {
+function ownedVariants(cardId: string, variantMap: Map<string, string[]>, collection: Collection): number {
+  const ids = variantMap.get(cardId) ?? [cardId];
+  return ids.reduce((sum, id) => sum + ownedCount(collection, id), 0);
+}
+
+function resolveSlot(
+  slot: MetaDeckSlot,
+  cardMap: Map<string, Card>,
+  collection: Collection,
+  variantMap: Map<string, string[]>,
+): SlotResult {
   const card = cardMap.get(slot.cardId) ?? null;
-  const owned = Math.min(ownedCount(collection, slot.cardId), slot.count);
+  const owned = Math.min(ownedVariants(slot.cardId, variantMap, collection), slot.count);
   return { card, needed: slot.count, owned, missing: slot.count - owned };
 }
 
@@ -39,13 +49,14 @@ export function calcMetaDeckResult(
   deck: MetaDeck,
   cardMap: Map<string, Card>,
   collection: Collection,
+  variantMap: Map<string, string[]>,
 ): MetaDeckResult {
   const legendCard = cardMap.get(deck.legendId) ?? null;
-  const legendOwned = legendCard ? Math.min(ownedCount(collection, deck.legendId), 1) : 0;
+  const legendOwned = Math.min(ownedVariants(deck.legendId, variantMap, collection), 1);
 
-  const mainSlots = deck.main.map((s) => resolveSlot(s, cardMap, collection));
-  const runeSlots = deck.runes.map((s) => resolveSlot(s, cardMap, collection));
-  const battlefieldSlots = deck.battlefields.map((s) => resolveSlot(s, cardMap, collection));
+  const mainSlots = deck.main.map((s) => resolveSlot(s, cardMap, collection, variantMap));
+  const runeSlots = deck.runes.map((s) => resolveSlot(s, cardMap, collection, variantMap));
+  const battlefieldSlots = deck.battlefields.map((s) => resolveSlot(s, cardMap, collection, variantMap));
 
   const [mainOwned, mainTotal] = sumSlots(mainSlots);
   const [runesOwned, runesTotal] = sumSlots(runeSlots);

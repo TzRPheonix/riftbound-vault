@@ -9,6 +9,7 @@ import { Toolbar } from './components/Toolbar';
 import { META_DECKS } from './data/meta-decks';
 import { buildCardMap, calcMetaDeckResult } from './lib/meta-deck';
 import {
+  buildVariantMap,
   filterCards,
   isLandscapeCard,
   ownedCount,
@@ -24,7 +25,9 @@ import {
   exportCollectionJson,
   importCollectionJson,
   loadCollection,
+  loadFoils,
   saveCollection,
+  saveFoils,
 } from './lib/storage';
 import './App.css';
 
@@ -55,6 +58,7 @@ function App() {
   const [sacrificeFilter, setSacrificeFilter] = useState('');
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [quickAdd, setQuickAdd] = useState(() => loadQuickAdd());
+  const [foilCollection, setFoilCollection] = useState<Collection>(() => loadFoils());
   const [statMode, setStatMode] = useState<StatMode>('total');
   const [zoomCardId, setZoomCardId] = useState<string | null>(null);
   const [selectedLegendId, setSelectedLegendId] = useState<string | null>(null);
@@ -76,11 +80,45 @@ function App() {
   }, [collection]);
 
   useEffect(() => {
+    saveFoils(foilCollection);
+  }, [foilCollection]);
+
+  // Cap foil counts when qty drops below them
+  useEffect(() => {
+    setFoilCollection((prev) => {
+      const entries = Object.entries(prev);
+      if (entries.length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, qty] of entries) {
+        const owned = collection[id] ?? 0;
+        if (qty > owned) {
+          if (owned === 0) delete next[id];
+          else next[id] = owned;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [collection]);
+
+  useEffect(() => {
     localStorage.setItem(QUICK_ADD_KEY, quickAdd ? '1' : '0');
   }, [quickAdd]);
 
   const updateQty = useCallback((cardId: string, delta: number) => {
     setCollection((prev) => {
+      const next = { ...prev };
+      const current = next[cardId] ?? 0;
+      const value = Math.max(0, current + delta);
+      if (value === 0) delete next[cardId];
+      else next[cardId] = value;
+      return next;
+    });
+  }, []);
+
+  const updateFoil = useCallback((cardId: string, delta: number) => {
+    setFoilCollection((prev) => {
       const next = { ...prev };
       const current = next[cardId] ?? 0;
       const value = Math.max(0, current + delta);
@@ -161,10 +199,11 @@ function App() {
   );
 
   const cardMap = useMemo(() => buildCardMap(cards), [cards]);
+  const variantMap = useMemo(() => buildVariantMap(cards), [cards]);
 
   const metaResults = useMemo(
-    () => META_DECKS.map((d) => calcMetaDeckResult(d, cardMap, collection)),
-    [cardMap, collection],
+    () => META_DECKS.map((d) => calcMetaDeckResult(d, cardMap, collection, variantMap)),
+    [cardMap, collection, variantMap],
   );
 
   useEffect(() => {
@@ -353,7 +392,9 @@ function App() {
                   key={card.id}
                   card={card}
                   owned={ownedCount(collection, card.id)}
+                  foil={foilCollection[card.id] ?? 0}
                   onChange={(d) => updateQty(card.id, d)}
+                  onFoilChange={(d) => updateFoil(card.id, d)}
                   quickAdd={quickAdd}
                   onOpen={() => setZoomCardId(card.id)}
                 />
