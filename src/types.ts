@@ -48,6 +48,13 @@ export interface Card {
 
 export type Collection = Record<string, number>;
 
+export interface CardPrice {
+  lowest: number | null;
+  avg30d: number | null;
+  currency: string;
+}
+export type PriceMap = Record<string, CardPrice>;
+
 export interface MetaDeckSlot {
   cardId: string;
   count: number;

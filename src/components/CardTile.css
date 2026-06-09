@@ -214,6 +214,17 @@
   font-size: 0.7rem;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+.card-tile__price {
+  color: #4ade80;
+  font-weight: 600;
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .card-tile__controls {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Card, Collection, DomainId } from './types';
+import type { Card, Collection, DomainId, PriceMap } from './types';
 import { CardLightbox } from './components/CardLightbox';
 import { CardTile } from './components/CardTile';
 import { CollectionStats } from './components/CollectionStats';
@@ -44,6 +44,7 @@ function loadQuickAdd(): boolean {
 
 function App() {
   const [cards, setCards] = useState<Card[]>([]);
+  const [prices, setPrices] = useState<PriceMap>({});
   const [loading, setLoading] = useState(true);
   const [collection, setCollection] = useState<Collection>(() => loadCollection());
   const [tab, setTab] = useState<Tab>('collection');
@@ -65,13 +66,14 @@ function App() {
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}data/cards.json`)
-      .then((r) => r.json())
-      .then((data: Card[]) => {
-        setCards(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch(`${base}data/cards.json`).then((r) => r.json()) as Promise<Card[]>,
+      fetch(`${base}data/prices.json`).then((r) => r.json()).catch(() => ({})) as Promise<PriceMap>,
+    ]).then(([cardData, priceData]) => {
+      setCards(cardData);
+      setPrices(priceData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -376,6 +378,7 @@ function App() {
                   card={card}
                   owned={ownedCount(collection, card.id)}
                   foil={foilCollection[card.id] ?? 0}
+                  price={prices[card.code]}
                   onChange={(d) => updateQty(card.id, d)}
                   onFoilChange={(d) => updateFoil(card.id, d)}
                   quickAdd={quickAdd}

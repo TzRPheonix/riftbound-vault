@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { Card } from '../types';
+import type { Card, CardPrice } from '../types';
 import { DOMAIN_COLORS, isLandscapeCard } from '../lib/cards';
 import './CardTile.css';
 
@@ -7,6 +7,7 @@ interface CardTileProps {
   card: Card;
   owned: number;
   foil?: number;
+  price?: CardPrice;
   onChange: (delta: number) => void;
   onFoilChange?: (delta: number) => void;
   compact?: boolean;
@@ -19,6 +20,7 @@ export function CardTile({
   card,
   owned,
   foil = 0,
+  price,
   onChange,
   onFoilChange,
   compact = false,
@@ -70,7 +72,14 @@ export function CardTile({
           <h3 className="card-tile__name" title={card.name}>
             {card.name}
           </h3>
-          <p className="card-tile__code">{card.code}</p>
+          <p className="card-tile__code">
+            {card.code}
+            {price?.lowest != null && (
+              <span className="card-tile__price">
+                {price.lowest.toLocaleString('fr-FR', { style: 'currency', currency: price.currency })}
+              </span>
+            )}
+          </p>
         </div>
       )}
 

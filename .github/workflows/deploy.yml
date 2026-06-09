@@ -29,6 +29,23 @@ jobs:
           mkdir -p scripts
           curl -fsSL "https://gist.githubusercontent.com/OwenMelbz/e04dadf641cc9b81cb882b4612343112/raw/riftbound.json" -o scripts/source-cards.json
 
+      - name: Get today's date (cache key)
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Restore prices cache
+        id: prices-cache
+        uses: actions/cache@v4
+        with:
+          path: public/data/prices.json
+          key: prices-${{ steps.date.outputs.date }}
+
+      - name: Fetch prices
+        if: steps.prices-cache.outputs.cache-hit != 'true'
+        run: node scripts/fetch-prices.mjs
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+
       - run: npm install
       - run: npm run build:cards
       - run: npm run build
