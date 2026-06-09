@@ -11,14 +11,20 @@ export interface SetStat {
 interface CollectionStatsProps {
   totalOwned: number;
   uniqueOwned: number;
+  collectionValue: number;
   setStats: SetStat[];
 }
 
 export function CollectionStats({
   totalOwned,
   uniqueOwned,
+  collectionValue,
   setStats,
 }: CollectionStatsProps) {
+  const valueStr = collectionValue > 0
+    ? collectionValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+    : '—';
+
   return (
     <div className="cstats">
       <div className="cstats__left">
@@ -30,6 +36,10 @@ export function CollectionStats({
           <div className="cstats__counter">
             <span className="cstats__counter-value">{totalOwned}</span>
             <span className="cstats__counter-label">Total</span>
+          </div>
+          <div className="cstats__counter">
+            <span className="cstats__counter-value cstats__counter-value--price">{valueStr}</span>
+            <span className="cstats__counter-label">Valeur est.</span>
           </div>
         </div>
       </div>

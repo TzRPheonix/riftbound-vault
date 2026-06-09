@@ -41,6 +41,11 @@
   color: var(--text-muted);
 }
 
+.cstats__counter-value--price {
+  color: #4ade80;
+  font-size: 1.3rem;
+}
+
 .cstats__modes {
   display: flex;
   flex-wrap: wrap;

@@ -55,6 +55,8 @@ interface ToolbarProps {
   onOwnedOnlyChange: (v: boolean) => void;
   foilOnly: boolean;
   onFoilOnlyChange: (v: boolean) => void;
+  sortBy: string;
+  onSortChange: (v: string) => void;
   quickAdd: boolean;
   onQuickAddChange: (v: boolean) => void;
   sets: { id: string; name: string }[];
@@ -85,6 +87,8 @@ export function Toolbar({
   onOwnedOnlyChange,
   foilOnly,
   onFoilOnlyChange,
+  sortBy,
+  onSortChange,
   quickAdd,
   onQuickAddChange,
   sets,
@@ -143,6 +147,16 @@ export function Toolbar({
           value={sacrificeFilter}
           options={statOptions('Toutes', 'Aucune', sacrificeValues)}
           onChange={onSacrificeChange}
+        />
+        <FilterSelect
+          label="Trier par"
+          value={sortBy}
+          options={[
+            { value: '', label: 'Par défaut' },
+            { value: 'price-asc', label: 'Prix ↑' },
+            { value: 'price-desc', label: 'Prix ↓' },
+          ]}
+          onChange={onSortChange}
         />
 
         <div className="toolbar__toggles">

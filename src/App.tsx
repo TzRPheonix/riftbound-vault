@@ -58,6 +58,7 @@ function App() {
   const [sacrificeFilter, setSacrificeFilter] = useState('');
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [foilOnly, setFoilOnly] = useState(false);
+  const [sortBy, setSortBy] = useState('');
   const [quickAdd, setQuickAdd] = useState(() => loadQuickAdd());
   const [foilCollection, setFoilCollection] = useState<Collection>(() => loadFoils());
   const [zoomCardId, setZoomCardId] = useState<string | null>(null);
@@ -138,8 +139,21 @@ function App() {
       ownedOnly,
       collection: effectiveCollection,
     });
-    if (foilOnly) return base.filter((c) => (foilCollection[c.id] ?? 0) > 0);
-    return base;
+    let result = foilOnly ? base.filter((c) => (foilCollection[c.id] ?? 0) > 0) : base;
+    if (sortBy === 'price-asc') {
+      result = [...result].sort((a, b) => {
+        const pa = prices[a.code]?.lowest ?? Infinity;
+        const pb = prices[b.code]?.lowest ?? Infinity;
+        return pa - pb;
+      });
+    } else if (sortBy === 'price-desc') {
+      result = [...result].sort((a, b) => {
+        const pa = prices[a.code]?.lowest ?? -Infinity;
+        const pb = prices[b.code]?.lowest ?? -Infinity;
+        return pb - pa;
+      });
+    }
+    return result;
   }, [
     cards,
     search,
@@ -152,8 +166,10 @@ function App() {
     sacrificeFilter,
     ownedOnly,
     foilOnly,
+    sortBy,
     effectiveCollection,
     foilCollection,
+    prices,
   ]);
 
   const zoomIndex = useMemo(() => {
@@ -205,17 +221,20 @@ function App() {
     }
   }, [suggestions, selectedLegendId]);
 
-  const { totalOwned, uniqueOwned } = useMemo(() => {
+  const { totalOwned, uniqueOwned, collectionValue } = useMemo(() => {
     let total = 0;
     let unique = 0;
-    for (const [, qty] of Object.entries(effectiveCollection)) {
+    let value = 0;
+    for (const card of cards) {
+      const qty = effectiveCollection[card.id] ?? 0;
       if (qty > 0) {
         unique += 1;
         total += qty;
+        value += qty * (prices[card.code]?.lowest ?? 0);
       }
     }
-    return { totalOwned: total, uniqueOwned: unique };
-  }, [effectiveCollection]);
+    return { totalOwned: total, uniqueOwned: unique, collectionValue: value };
+  }, [effectiveCollection, cards, prices]);
 
 
   const setStats = useMemo(() =>
@@ -354,6 +373,8 @@ function App() {
               onOwnedOnlyChange={setOwnedOnly}
               foilOnly={foilOnly}
               onFoilOnlyChange={setFoilOnly}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
               quickAdd={quickAdd}
               onQuickAddChange={setQuickAdd}
               sets={sets}
@@ -361,6 +382,7 @@ function App() {
             <CollectionStats
               totalOwned={totalOwned}
               uniqueOwned={uniqueOwned}
+              collectionValue={collectionValue}
               setStats={setStats}
             />
             <p className="results-count">
