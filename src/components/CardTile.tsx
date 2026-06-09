@@ -71,22 +71,17 @@ export function CardTile({
       )}
 
       <div className="card-tile__controls" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="qty-btn" onClick={() => onChange(-1)} disabled={owned <= 0}>
-          −
-        </button>
-        <span className="qty-value">{owned}</span>
-        <button type="button" className="qty-btn" onClick={() => onChange(1)}>
-          +
-        </button>
-        {onFoilChange && owned > 0 && (
-          <button
-            type="button"
-            className={`foil-btn ${foil > 0 ? 'foil-btn--active' : ''}`}
-            title={`Copies foil : ${foil}/${owned}`}
-            onClick={() => onFoilChange(foil >= owned ? -(foil) : 1)}
-          >
-            ✦{foil > 0 ? foil : ''}
-          </button>
+        <div className="qty-row">
+          <button type="button" className="qty-btn" onClick={() => onChange(-1)} disabled={owned <= 0}>−</button>
+          <span className="qty-value">{owned}</span>
+          <button type="button" className="qty-btn" onClick={() => onChange(1)}>+</button>
+        </div>
+        {onFoilChange && (
+          <div className="qty-row qty-row--foil">
+            <button type="button" className="qty-btn qty-btn--foil" onClick={() => onFoilChange(-1)} disabled={foil <= 0}>−</button>
+            <span className="qty-value qty-value--foil">✦{foil}</span>
+            <button type="button" className="qty-btn qty-btn--foil" onClick={() => onFoilChange(1)}>+</button>
+          </div>
         )}
       </div>
     </article>

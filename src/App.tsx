@@ -83,24 +83,6 @@ function App() {
     saveFoils(foilCollection);
   }, [foilCollection]);
 
-  // Cap foil counts when qty drops below them
-  useEffect(() => {
-    setFoilCollection((prev) => {
-      const entries = Object.entries(prev);
-      if (entries.length === 0) return prev;
-      let changed = false;
-      const next = { ...prev };
-      for (const [id, qty] of entries) {
-        const owned = collection[id] ?? 0;
-        if (qty > owned) {
-          if (owned === 0) delete next[id];
-          else next[id] = owned;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [collection]);
 
   useEffect(() => {
     localStorage.setItem(QUICK_ADD_KEY, quickAdd ? '1' : '0');
