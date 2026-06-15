@@ -11,6 +11,7 @@ export interface SlotResult {
 export interface MetaDeckResult {
   deck: MetaDeck;
   legend: Card | null;
+  legendOwned: number;
   completeness: number;
   mainOwned: number;
   mainTotal: number;
@@ -69,6 +70,7 @@ export function calcMetaDeckResult(
   return {
     deck,
     legend: legendCard,
+    legendOwned,
     completeness,
     mainOwned,
     mainTotal,

@@ -69,6 +69,11 @@ export function MetaDeckPanel({ results, onCollectionChange }: MetaDeckPanelProp
   );
 }
 
+function isChampionUnit(card: Card | null, champion: string): boolean {
+  if (!card) return false;
+  return card.name === champion || card.name.startsWith(`${champion},`);
+}
+
 function DeckDetail({
   result: r,
   onChange,
@@ -76,6 +81,11 @@ function DeckDetail({
   result: MetaDeckResult;
   onChange: (id: string, delta: number) => void;
 }) {
+  const championSlots = r.mainSlots.filter((s) => isChampionUnit(s.card, r.deck.champion));
+  const mainSlots = r.mainSlots.filter((s) => !isChampionUnit(s.card, r.deck.champion));
+  const championOwned = championSlots.reduce((sum, s) => sum + s.owned, 0);
+  const championTotal = championSlots.reduce((sum, s) => sum + s.needed, 0);
+
   return (
     <div className="deck-detail">
       <header className="deck-detail__header">
@@ -119,12 +129,19 @@ function DeckDetail({
         {r.legend && (
           <SlotSection
             title="Légende"
-            slots={[{ card: r.legend, needed: 1, owned: 0, missing: 1 }]}
+            slots={[{ card: r.legend, needed: 1, owned: r.legendOwned, missing: 1 - r.legendOwned }]}
             legendId={r.deck.legendId}
             onChange={onChange}
           />
         )}
-        <SlotSection title={`Deck principal (${r.mainOwned}/${r.mainTotal})`} slots={r.mainSlots} onChange={onChange} />
+        {championSlots.length > 0 && (
+          <SlotSection
+            title={`Champion (${championOwned}/${championTotal})`}
+            slots={championSlots}
+            onChange={onChange}
+          />
+        )}
+        <SlotSection title={`Deck principal (${r.mainOwned}/${r.mainTotal})`} slots={mainSlots} onChange={onChange} />
         <SlotSection title={`Runes (${r.runesOwned}/${r.runesTotal})`} slots={r.runeSlots} onChange={onChange} compact />
         <SlotSection
           title={`Champs de bataille (${r.battlefieldsOwned}/${r.battlefieldsTotal})`}
