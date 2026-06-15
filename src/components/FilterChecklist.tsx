@@ -4,6 +4,8 @@ import './FilterChecklist.css';
 export interface FilterChecklistOption {
   value: string;
   label: string;
+  /** Optional color swatch (e.g. domain). */
+  swatch?: string;
 }
 
 interface FilterChecklistProps {
@@ -12,6 +14,8 @@ interface FilterChecklistProps {
   options: readonly FilterChecklistOption[];
   onChange: (values: string[]) => void;
   emptyLabel?: string;
+  countNoun?: string;
+  mode?: 'multi' | 'single';
   className?: string;
 }
 
@@ -21,22 +25,30 @@ export function FilterChecklist({
   options,
   onChange,
   emptyLabel = 'Tous',
+  countNoun = 'sélections',
+  mode = 'multi',
   className = '',
 }: FilterChecklistProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const isActive = values.length > 0;
 
   const displayLabel = useMemo(() => {
     if (values.length === 0) return emptyLabel;
-    if (values.length === 1) {
+    if (mode === 'single' || values.length === 1) {
       return options.find((o) => o.value === values[0])?.label ?? values[0];
     }
-    if (values.length === options.length) return 'Tous les types';
-    return `${values.length} types`;
-  }, [values, options, emptyLabel]);
+    if (values.length === options.length) return `Tous · ${label}`;
+    return `${values.length} ${countNoun}`;
+  }, [values, options, emptyLabel, countNoun, mode, label]);
 
   const toggle = (value: string) => {
+    if (mode === 'single') {
+      onChange(values.includes(value) ? [] : [value]);
+      setOpen(false);
+      return;
+    }
     if (values.includes(value)) {
       onChange(values.filter((v) => v !== value));
     } else {
@@ -63,7 +75,14 @@ export function FilterChecklist({
   return (
     <div
       ref={rootRef}
-      className={`filter-checklist ${open ? 'filter-checklist--open' : ''} ${className}`.trim()}
+      className={[
+        'filter-checklist',
+        open ? 'filter-checklist--open' : '',
+        isActive ? 'filter-checklist--active' : '',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       <button
         type="button"
@@ -75,32 +94,61 @@ export function FilterChecklist({
       >
         <span className="filter-checklist__label">{label}</span>
         <span className="filter-checklist__value">{displayLabel}</span>
+        {isActive && mode === 'multi' && values.length > 1 && (
+          <span className="filter-checklist__badge">{values.length}</span>
+        )}
         <span className="filter-checklist__chevron" aria-hidden />
       </button>
 
       {open && (
-        <div id={listId} className="filter-checklist__menu" role="listbox" aria-label={label} aria-multiselectable>
-          <button
-            type="button"
-            className="filter-checklist__clear"
-            onClick={() => onChange([])}
-            disabled={values.length === 0}
-          >
-            Tout afficher
-          </button>
-          {options.map((opt) => {
-            const checked = values.includes(opt.value);
-            return (
-              <label key={opt.value} className={`filter-checklist__item ${checked ? 'filter-checklist__item--checked' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggle(opt.value)}
-                />
-                <span>{opt.label}</span>
-              </label>
-            );
-          })}
+        <div
+          id={listId}
+          className="filter-checklist__menu"
+          role="listbox"
+          aria-label={label}
+          aria-multiselectable={mode === 'multi'}
+        >
+          <div className="filter-checklist__menu-header">
+            <span className="filter-checklist__menu-title">{label}</span>
+            <button
+              type="button"
+              className="filter-checklist__clear"
+              onClick={() => {
+                onChange([]);
+                if (mode === 'single') setOpen(false);
+              }}
+              disabled={values.length === 0}
+            >
+              Réinitialiser
+            </button>
+          </div>
+          <div className="filter-checklist__options">
+            {options.map((opt) => {
+              const checked = values.includes(opt.value);
+              return (
+                <label
+                  key={opt.value}
+                  className={`filter-checklist__item ${checked ? 'filter-checklist__item--checked' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    className="filter-checklist__input"
+                    checked={checked}
+                    onChange={() => toggle(opt.value)}
+                  />
+                  <span className="filter-checklist__box" aria-hidden />
+                  {opt.swatch && (
+                    <span
+                      className="filter-checklist__swatch"
+                      style={{ background: opt.swatch }}
+                      aria-hidden
+                    />
+                  )}
+                  <span className="filter-checklist__item-label">{opt.label}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

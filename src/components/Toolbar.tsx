@@ -1,46 +1,53 @@
-import { FilterSelect, type FilterSelectOption } from './FilterSelect';
-import { FilterChecklist } from './FilterChecklist';
-import { RARITY_LABELS, TYPE_FILTER_OPTIONS, type FilterRelevance, type TypeFilterId } from '../lib/cards';
+import { FilterChecklist, type FilterChecklistOption } from './FilterChecklist';
+import {
+  DOMAIN_COLORS,
+  RARITY_LABELS,
+  TYPE_FILTER_OPTIONS,
+  type FilterRelevance,
+  type TypeFilterId,
+} from '../lib/cards';
+import type { DomainId } from '../types';
 import './Toolbar.css';
 
-const DOMAIN_OPTIONS: FilterSelectOption[] = [
-  { value: '', label: 'Tous les domaines' },
-  { value: 'fury', label: 'Fury' },
-  { value: 'calm', label: 'Calm' },
-  { value: 'mind', label: 'Mind' },
-  { value: 'body', label: 'Body' },
-  { value: 'chaos', label: 'Chaos' },
-  { value: 'order', label: 'Order' },
+const DOMAIN_OPTIONS: FilterChecklistOption[] = (
+  ['fury', 'calm', 'mind', 'body', 'chaos', 'order'] as DomainId[]
+).map((id) => ({
+  value: id,
+  label: id.charAt(0).toUpperCase() + id.slice(1),
+  swatch: DOMAIN_COLORS[id],
+}));
+
+const SORT_OPTIONS: FilterChecklistOption[] = [
+  { value: 'price-asc', label: 'Prix ↑' },
+  { value: 'price-desc', label: 'Prix ↓' },
 ];
 
-function statOptions(label: string, noneLabel: string, values: number[]): FilterSelectOption[] {
-  return [
-    { value: '', label },
-    { value: 'none', label: noneLabel },
-    ...values.map((n) => ({ value: String(n), label: String(n) })),
-  ];
+function statOptions(noneLabel: string, values: number[]): FilterChecklistOption[] {
+  const opts: FilterChecklistOption[] = [{ value: 'none', label: noneLabel }];
+  for (const n of values) opts.push({ value: String(n), label: String(n) });
+  return opts;
 }
 
 interface ToolbarProps {
   search: string;
   onSearchChange: (v: string) => void;
-  setFilter: string;
-  onSetChange: (v: string) => void;
-  domainFilter: string;
-  onDomainChange: (v: string) => void;
+  setFilters: string[];
+  onSetFiltersChange: (v: string[]) => void;
+  domainFilters: DomainId[];
+  onDomainFiltersChange: (v: DomainId[]) => void;
   typeFilters: TypeFilterId[];
   onTypeFiltersChange: (v: TypeFilterId[]) => void;
-  rarityFilter: string;
-  onRarityChange: (v: string) => void;
+  rarityFilters: string[];
+  onRarityFiltersChange: (v: string[]) => void;
   rarities: string[];
-  energyFilter: string;
-  onEnergyChange: (v: string) => void;
-  mightFilter: string;
-  onMightChange: (v: string) => void;
+  energyFilters: string[];
+  onEnergyFiltersChange: (v: string[]) => void;
+  mightFilters: string[];
+  onMightFiltersChange: (v: string[]) => void;
   energyValues: number[];
   mightValues: number[];
-  sacrificeFilter: string;
-  onSacrificeChange: (v: string) => void;
+  sacrificeFilters: string[];
+  onSacrificeFiltersChange: (v: string[]) => void;
   sacrificeValues: number[];
   relevance: FilterRelevance;
   ownedOnly: boolean;
@@ -57,23 +64,23 @@ interface ToolbarProps {
 export function Toolbar({
   search,
   onSearchChange,
-  setFilter,
-  onSetChange,
-  domainFilter,
-  onDomainChange,
+  setFilters,
+  onSetFiltersChange,
+  domainFilters,
+  onDomainFiltersChange,
   typeFilters,
   onTypeFiltersChange,
-  rarityFilter,
-  onRarityChange,
+  rarityFilters,
+  onRarityFiltersChange,
   rarities,
-  energyFilter,
-  onEnergyChange,
-  mightFilter,
-  onMightChange,
+  energyFilters,
+  onEnergyFiltersChange,
+  mightFilters,
+  onMightFiltersChange,
   energyValues,
   mightValues,
-  sacrificeFilter,
-  onSacrificeChange,
+  sacrificeFilters,
+  onSacrificeFiltersChange,
   sacrificeValues,
   relevance,
   ownedOnly,
@@ -86,15 +93,15 @@ export function Toolbar({
   onQuickAddChange,
   sets,
 }: ToolbarProps) {
-  const setOptions: FilterSelectOption[] = [
-    { value: '', label: 'Tous les sets' },
-    ...sets.map((s) => ({ value: s.id, label: s.name })),
-  ];
+  const setOptions: FilterChecklistOption[] = sets.map((s) => ({
+    value: s.id,
+    label: `${s.id} · ${s.name}`,
+  }));
 
-  const rarityOptions: FilterSelectOption[] = [
-    { value: '', label: 'Toutes les raretés' },
-    ...rarities.map((r) => ({ value: r, label: RARITY_LABELS[r] ?? r })),
-  ];
+  const rarityOptions: FilterChecklistOption[] = rarities.map((r) => ({
+    value: r,
+    label: RARITY_LABELS[r] ?? r,
+  }));
 
   const hasStatFilters = relevance.energy || relevance.might || relevance.sacrifice;
 
@@ -114,28 +121,40 @@ export function Toolbar({
         <div className="toolbar__group">
           <span className="toolbar__group-label">Carte</span>
           <div className="toolbar__group-row">
-            <FilterSelect label="Set" value={setFilter} options={setOptions} onChange={onSetChange} />
+            <FilterChecklist
+              label="Sets"
+              values={setFilters}
+              options={setOptions}
+              onChange={onSetFiltersChange}
+              emptyLabel="Tous les sets"
+              countNoun="sets"
+            />
             <FilterChecklist
               label="Types"
               values={typeFilters}
               options={TYPE_FILTER_OPTIONS}
               onChange={onTypeFiltersChange}
               emptyLabel="Tous les types"
+              countNoun="types"
             />
             {relevance.domain && (
-              <FilterSelect
-                label="Domaine"
-                value={domainFilter}
+              <FilterChecklist
+                label="Domaines"
+                values={domainFilters}
                 options={DOMAIN_OPTIONS}
-                onChange={onDomainChange}
+                onChange={(v) => onDomainFiltersChange(v as DomainId[])}
+                emptyLabel="Tous les domaines"
+                countNoun="domaines"
               />
             )}
             {relevance.rarity && (
-              <FilterSelect
-                label="Rareté"
-                value={rarityFilter}
+              <FilterChecklist
+                label="Raretés"
+                values={rarityFilters}
                 options={rarityOptions}
-                onChange={onRarityChange}
+                onChange={onRarityFiltersChange}
+                emptyLabel="Toutes les raretés"
+                countNoun="raretés"
               />
             )}
           </div>
@@ -146,27 +165,33 @@ export function Toolbar({
             <span className="toolbar__group-label">Stats</span>
             <div className="toolbar__group-row">
               {relevance.energy && (
-                <FilterSelect
+                <FilterChecklist
                   label="Coût runes"
-                  value={energyFilter}
-                  options={statOptions('Tous', 'Sans coût', energyValues)}
-                  onChange={onEnergyChange}
+                  values={energyFilters}
+                  options={statOptions('Sans coût', energyValues)}
+                  onChange={onEnergyFiltersChange}
+                  emptyLabel="Tous les coûts"
+                  countNoun="coûts"
                 />
               )}
               {relevance.might && (
-                <FilterSelect
+                <FilterChecklist
                   label="Might"
-                  value={mightFilter}
-                  options={statOptions('Tous', 'Sans Might', mightValues)}
-                  onChange={onMightChange}
+                  values={mightFilters}
+                  options={statOptions('Sans Might', mightValues)}
+                  onChange={onMightFiltersChange}
+                  emptyLabel="Tous les Might"
+                  countNoun="valeurs"
                 />
               )}
               {relevance.sacrifice && (
-                <FilterSelect
+                <FilterChecklist
                   label="Runes sacr."
-                  value={sacrificeFilter}
-                  options={statOptions('Toutes', 'Aucune', sacrificeValues)}
-                  onChange={onSacrificeChange}
+                  values={sacrificeFilters}
+                  options={statOptions('Aucune', sacrificeValues)}
+                  onChange={onSacrificeFiltersChange}
+                  emptyLabel="Toutes"
+                  countNoun="valeurs"
                 />
               )}
             </div>
@@ -176,15 +201,13 @@ export function Toolbar({
         <div className="toolbar__group">
           <span className="toolbar__group-label">Affichage</span>
           <div className="toolbar__group-row">
-            <FilterSelect
+            <FilterChecklist
               label="Trier par"
-              value={sortBy}
-              options={[
-                { value: '', label: 'Par défaut' },
-                { value: 'price-asc', label: 'Prix ↑' },
-                { value: 'price-desc', label: 'Prix ↓' },
-              ]}
-              onChange={onSortChange}
+              values={sortBy ? [sortBy] : []}
+              options={SORT_OPTIONS}
+              onChange={(v) => onSortChange(v[0] ?? '')}
+              emptyLabel="Par défaut"
+              mode="single"
             />
 
             <div className="toolbar__toggles">

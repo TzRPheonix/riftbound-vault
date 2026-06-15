@@ -56,13 +56,13 @@ function App() {
   const [collection, setCollection] = useState<Collection>(() => loadCollection());
   const [tab, setTab] = useState<Tab>('collection');
   const [search, setSearch] = useState('');
-  const [setFilter, setSetFilter] = useState('');
-  const [domainFilter, setDomainFilter] = useState('');
+  const [setFilters, setSetFilters] = useState<string[]>([]);
+  const [domainFilters, setDomainFilters] = useState<DomainId[]>([]);
   const [typeFilters, setTypeFilters] = useState<TypeFilterId[]>([]);
-  const [rarityFilter, setRarityFilter] = useState('');
-  const [energyFilter, setEnergyFilter] = useState('');
-  const [mightFilter, setMightFilter] = useState('');
-  const [sacrificeFilter, setSacrificeFilter] = useState('');
+  const [rarityFilters, setRarityFilters] = useState<string[]>([]);
+  const [energyFilters, setEnergyFilters] = useState<string[]>([]);
+  const [mightFilters, setMightFilters] = useState<string[]>([]);
+  const [sacrificeFilters, setSacrificeFilters] = useState<string[]>([]);
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [foilOnly, setFoilOnly] = useState(false);
   const [sortBy, setSortBy] = useState('');
@@ -128,8 +128,8 @@ function App() {
   }, [collection, foilCollection]);
 
   const filterPool = useMemo(
-    () => scopedFilterPool(cards, setFilter, typeFilters),
-    [cards, setFilter, typeFilters],
+    () => scopedFilterPool(cards, setFilters, typeFilters),
+    [cards, setFilters, typeFilters],
   );
 
   const filterRelevance = useMemo(
@@ -146,25 +146,42 @@ function App() {
   const cardFilters = useMemo(
     () => ({
       search,
-      set: setFilter,
-      domain: domainFilter as DomainId | '',
+      sets: setFilters,
+      domains: domainFilters,
       types: typeFilters,
-      rarityFilter,
-      energyFilter,
-      mightFilter,
-      sacrificeFilter,
+      rarities: rarityFilters,
+      energyFilters,
+      mightFilters,
+      sacrificeFilters,
     }),
-    [search, setFilter, domainFilter, typeFilters, rarityFilter, energyFilter, mightFilter, sacrificeFilter],
+    [
+      search,
+      setFilters,
+      domainFilters,
+      typeFilters,
+      rarityFilters,
+      energyFilters,
+      mightFilters,
+      sacrificeFilters,
+    ],
   );
 
   useEffect(() => {
-    if (!filterRelevance.domain && domainFilter) setDomainFilter('');
-    if (!filterRelevance.rarity && rarityFilter) setRarityFilter('');
-    if (!filterRelevance.energy && energyFilter) setEnergyFilter('');
-    if (!filterRelevance.might && mightFilter) setMightFilter('');
-    if (!filterRelevance.sacrifice && sacrificeFilter) setSacrificeFilter('');
+    if (!filterRelevance.domain && domainFilters.length) setDomainFilters([]);
+    if (!filterRelevance.rarity && rarityFilters.length) setRarityFilters([]);
+    if (!filterRelevance.energy && energyFilters.length) setEnergyFilters([]);
+    if (!filterRelevance.might && mightFilters.length) setMightFilters([]);
+    if (!filterRelevance.sacrifice && sacrificeFilters.length) setSacrificeFilters([]);
     if (!filterRelevance.foilToggle && foilOnly) setFoilOnly(false);
-  }, [filterRelevance, domainFilter, rarityFilter, energyFilter, mightFilter, sacrificeFilter, foilOnly]);
+  }, [
+    filterRelevance,
+    domainFilters.length,
+    rarityFilters.length,
+    energyFilters.length,
+    mightFilters.length,
+    sacrificeFilters.length,
+    foilOnly,
+  ]);
 
   const activeFilterCompletion = useMemo(() => {
     if (!hasActiveCardFilters(cardFilters)) return null;
@@ -386,23 +403,23 @@ function App() {
             <Toolbar
               search={search}
               onSearchChange={setSearch}
-              setFilter={setFilter}
-              onSetChange={setSetFilter}
-              domainFilter={domainFilter}
-              onDomainChange={setDomainFilter}
+              setFilters={setFilters}
+              onSetFiltersChange={setSetFilters}
+              domainFilters={domainFilters}
+              onDomainFiltersChange={setDomainFilters}
               typeFilters={typeFilters}
               onTypeFiltersChange={setTypeFilters}
-              rarityFilter={rarityFilter}
-              onRarityChange={setRarityFilter}
+              rarityFilters={rarityFilters}
+              onRarityFiltersChange={setRarityFilters}
               rarities={rarities}
-              energyFilter={energyFilter}
-              onEnergyChange={setEnergyFilter}
-              mightFilter={mightFilter}
-              onMightChange={setMightFilter}
+              energyFilters={energyFilters}
+              onEnergyFiltersChange={setEnergyFilters}
+              mightFilters={mightFilters}
+              onMightFiltersChange={setMightFilters}
               energyValues={energyValues}
               mightValues={mightValues}
-              sacrificeFilter={sacrificeFilter}
-              onSacrificeChange={setSacrificeFilter}
+              sacrificeFilters={sacrificeFilters}
+              onSacrificeFiltersChange={setSacrificeFilters}
               sacrificeValues={sacrificeValues}
               relevance={filterRelevance}
               ownedOnly={ownedOnly}

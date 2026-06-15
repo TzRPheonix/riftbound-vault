@@ -46,13 +46,13 @@ export type TypeFilterId = (typeof TYPE_FILTER_OPTIONS)[number]['value'];
 
 export interface CardFilterState {
   search?: string;
-  set?: string;
-  domain?: DomainId | '';
+  sets?: string[];
+  domains?: DomainId[];
   types?: TypeFilterId[];
-  rarityFilter?: string;
-  energyFilter?: string;
-  mightFilter?: string;
-  sacrificeFilter?: string;
+  rarities?: string[];
+  energyFilters?: string[];
+  mightFilters?: string[];
+  sacrificeFilters?: string[];
 }
 
 export interface FilterRelevance {
@@ -91,13 +91,13 @@ const TYPE_FILTER_OVERRIDES: Record<string, Partial<FilterRelevance>> = {
 export function hasActiveCardFilters(filters: CardFilterState): boolean {
   return !!(
     filters.search?.trim() ||
-    filters.set ||
-    filters.domain ||
+    (filters.sets && filters.sets.length > 0) ||
+    (filters.domains && filters.domains.length > 0) ||
     (filters.types && filters.types.length > 0) ||
-    filters.rarityFilter ||
-    filters.energyFilter ||
-    filters.mightFilter ||
-    filters.sacrificeFilter
+    (filters.rarities && filters.rarities.length > 0) ||
+    (filters.energyFilters && filters.energyFilters.length > 0) ||
+    (filters.mightFilters && filters.mightFilters.length > 0) ||
+    (filters.sacrificeFilters && filters.sacrificeFilters.length > 0)
   );
 }
 
@@ -106,20 +106,30 @@ export function describeActiveFilters(filters: CardFilterState): string {
   if (filters.types && filters.types.length > 0) {
     parts.push(filters.types.map((t) => TYPE_LABELS[t] ?? t).join(', '));
   }
-  if (filters.set) parts.push(filters.set);
-  if (filters.domain) parts.push(filters.domain);
-  if (filters.rarityFilter) parts.push(RARITY_LABELS[filters.rarityFilter] ?? filters.rarityFilter);
-  if (filters.energyFilter) {
-    parts.push(filters.energyFilter === 'none' ? 'sans coût' : `coût ${filters.energyFilter}`);
+  if (filters.sets && filters.sets.length > 0) parts.push(filters.sets.join(', '));
+  if (filters.domains && filters.domains.length > 0) parts.push(filters.domains.join(', '));
+  if (filters.rarities && filters.rarities.length > 0) {
+    parts.push(filters.rarities.map((r) => RARITY_LABELS[r] ?? r).join(', '));
   }
-  if (filters.mightFilter) {
-    parts.push(filters.mightFilter === 'none' ? 'sans Might' : `Might ${filters.mightFilter}`);
-  }
-  if (filters.sacrificeFilter) {
+  if (filters.energyFilters && filters.energyFilters.length > 0) {
     parts.push(
-      filters.sacrificeFilter === 'none'
-        ? 'sans runes sacrifiées'
-        : `${filters.sacrificeFilter} rune(s) sacr.`,
+      filters.energyFilters
+        .map((f) => (f === 'none' ? 'sans coût' : `coût ${f}`))
+        .join(', '),
+    );
+  }
+  if (filters.mightFilters && filters.mightFilters.length > 0) {
+    parts.push(
+      filters.mightFilters
+        .map((f) => (f === 'none' ? 'sans Might' : `Might ${f}`))
+        .join(', '),
+    );
+  }
+  if (filters.sacrificeFilters && filters.sacrificeFilters.length > 0) {
+    parts.push(
+      filters.sacrificeFilters
+        .map((f) => (f === 'none' ? 'sans runes sacr.' : `${f} rune(s) sacr.`))
+        .join(', '),
     );
   }
   if (filters.search?.trim()) parts.push(`« ${filters.search.trim()} »`);
@@ -139,11 +149,11 @@ export function filterCompletion(
 
 export function scopedFilterPool(
   cards: Card[],
-  setFilter = '',
+  setFilters: string[] = [],
   typeFilters: TypeFilterId[] = [],
 ): Card[] {
   let pool = cards;
-  if (setFilter) pool = pool.filter((c) => c.set === setFilter);
+  if (setFilters.length > 0) pool = pool.filter((c) => setFilters.includes(c.set));
   if (typeFilters.length > 0) {
     pool = pool.filter((c) => typeFilters.some((t) => matchesTypeCategory(c, t)));
   }
@@ -330,31 +340,42 @@ export function matchesStatFilter(value: number | null, filter: string): boolean
   return value === target;
 }
 
+export function matchesStatFilters(value: number | null, filters: string[]): boolean {
+  if (filters.length === 0) return true;
+  return filters.some((f) => matchesStatFilter(value, f));
+}
+
 export function filterCards(
   cards: Card[],
   opts: {
     search?: string;
-    set?: string;
-    domain?: DomainId | '';
+    sets?: string[];
+    domains?: DomainId[];
     types?: TypeFilterId[];
-    rarityFilter?: string;
-    energyFilter?: string;
-    mightFilter?: string;
-    sacrificeFilter?: string;
+    rarities?: string[];
+    energyFilters?: string[];
+    mightFilters?: string[];
+    sacrificeFilters?: string[];
     ownedOnly?: boolean;
     collection?: Collection;
   },
 ): Card[] {
   const q = opts.search?.trim().toLowerCase() ?? '';
   const types = opts.types ?? [];
+  const sets = opts.sets ?? [];
+  const domains = opts.domains ?? [];
+  const rarities = opts.rarities ?? [];
+  const energyFilters = opts.energyFilters ?? [];
+  const mightFilters = opts.mightFilters ?? [];
+  const sacrificeFilters = opts.sacrificeFilters ?? [];
   return cards.filter((card) => {
-    if (opts.set && card.set !== opts.set) return false;
-    if (opts.domain && !card.domains.includes(opts.domain)) return false;
+    if (sets.length > 0 && !sets.includes(card.set)) return false;
+    if (domains.length > 0 && !domains.some((d) => card.domains.includes(d))) return false;
     if (types.length > 0 && !types.some((t) => matchesTypeCategory(card, t))) return false;
-    if (opts.rarityFilter && card.rarity !== opts.rarityFilter) return false;
-    if (!matchesStatFilter(card.energy, opts.energyFilter ?? '')) return false;
-    if (!matchesStatFilter(card.might, opts.mightFilter ?? '')) return false;
-    if (!matchesStatFilter(card.power, opts.sacrificeFilter ?? '')) return false;
+    if (rarities.length > 0 && !rarities.includes(card.rarity)) return false;
+    if (!matchesStatFilters(card.energy, energyFilters)) return false;
+    if (!matchesStatFilters(card.might, mightFilters)) return false;
+    if (!matchesStatFilters(card.power, sacrificeFilters)) return false;
     if (opts.ownedOnly && opts.collection) {
       if (ownedCount(opts.collection, card.id) < 1) return false;
     }
