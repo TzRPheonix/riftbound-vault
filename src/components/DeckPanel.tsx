@@ -25,8 +25,8 @@ export function DeckPanel({
   if (suggestions.length === 0) {
     return (
       <section className="deck-panel deck-panel--empty">
-        <h2>No legends in your collection yet</h2>
-        <p>Add at least one Legend card in the Collection tab to see deck possibilities.</p>
+        <h2>Aucune légende dans votre collection</h2>
+        <p>Ajoutez au moins une carte Légende dans l&apos;onglet Collection pour voir les possibilités de deck.</p>
       </section>
     );
   }
@@ -35,9 +35,9 @@ export function DeckPanel({
     <section className="deck-panel">
       <header className="deck-panel__header">
         <div>
-          <h2>Deck possibilities</h2>
+          <h2>Possibilités de deck</h2>
           <p className="deck-panel__subtitle">
-            Based on cards you own · 40 main · 12 runes · 3 battlefields
+            Basé sur votre collection · 40 cartes main · 12 runes · 3 champs de bataille
           </p>
         </div>
       </header>
@@ -53,7 +53,7 @@ export function DeckPanel({
             <img src={s.legend.image} alt="" className="legend-chip__thumb" />
             <span className="legend-chip__info">
               <span className="legend-chip__name">{s.legend.name}</span>
-              <span className="legend-chip__pct">{s.completeness}% ready</span>
+              <span className="legend-chip__pct">{s.completeness}% prêt</span>
             </span>
           </button>
         ))}
@@ -65,35 +65,33 @@ export function DeckPanel({
 
           <div className="deck-sections">
             <DeckCardList
-              title="Legend"
+              title="Légende"
               cards={[selected.legend]}
               collection={collection}
               onChange={onCollectionChange}
               cap={1}
             />
             <DeckCardList
-              title={`Main deck pool (${selected.mainSlots}/${selected.mainTarget} slots)`}
+              title={`Deck principal (${Math.min(selected.mainSlots, selected.mainTarget)}/${selected.mainTarget})`}
               cards={selected.playableMain.slice(0, 48)}
               collection={collection}
               onChange={onCollectionChange}
-              hint={
-                selected.missingMain > 0
-                  ? `Need ${selected.missingMain} more main-deck slots from your collection`
-                  : 'Enough main-deck cards in collection'
-              }
+              hint={mainDeckHint(selected)}
             />
             <DeckCardList
-              title={`Runes (${selected.runeSlots}/${selected.runeTarget})`}
+              title={`Runes (${Math.min(selected.runeSlots, selected.runeTarget)}/${selected.runeTarget})`}
               cards={selected.playableRunes}
               collection={collection}
               onChange={onCollectionChange}
+              hint={runeHint(selected)}
               compact
             />
             <DeckCardList
-              title={`Battlefields (${selected.battlefieldCount}/${selected.battlefieldTarget} unique)`}
+              title={`Champs de bataille (${Math.min(selected.battlefieldCount, selected.battlefieldTarget)}/${selected.battlefieldTarget})`}
               cards={selected.playableBattlefields}
               collection={collection}
               onChange={onCollectionChange}
+              hint={battlefieldHint(selected)}
               compact
             />
           </div>
@@ -103,33 +101,74 @@ export function DeckPanel({
   );
 }
 
+function filledCount(current: number, target: number): number {
+  return Math.min(current, target);
+}
+
+function mainDeckHint(s: DeckSuggestion): string | undefined {
+  if (s.missingMain > 0) {
+    return `Il manque ${s.missingMain} copie${s.missingMain > 1 ? 's' : ''} pour compléter le deck principal`;
+  }
+  if (s.mainSlots > s.mainTarget) {
+    return `${s.mainSlots} copies utilisables dans votre collection (objectif : ${s.mainTarget})`;
+  }
+  return 'Assez de cartes pour le deck principal';
+}
+
+function runeHint(s: DeckSuggestion): string | undefined {
+  if (s.missingRunes > 0) {
+    return `Il manque ${s.missingRunes} rune${s.missingRunes > 1 ? 's' : ''} pour compléter le deck`;
+  }
+  if (s.runeSlots > s.runeTarget) {
+    return `${s.runeSlots} runes utilisables dans votre collection (objectif : ${s.runeTarget})`;
+  }
+  return 'Assez de runes pour le deck';
+}
+
+function battlefieldHint(s: DeckSuggestion): string | undefined {
+  if (s.missingBattlefields > 0) {
+    return `Il manque ${s.missingBattlefields} champ${s.missingBattlefields > 1 ? 's' : ''} de bataille différent${s.missingBattlefields > 1 ? 's' : ''}`;
+  }
+  if (s.battlefieldCount > s.battlefieldTarget) {
+    return `${s.battlefieldCount} champs de bataille différents dans votre collection (objectif : ${s.battlefieldTarget})`;
+  }
+  return 'Assez de champs de bataille pour le deck';
+}
+
 function DeckMeters({ suggestion: s }: { suggestion: DeckSuggestion }) {
   const rows = [
-    { label: 'Main deck', current: s.mainSlots, target: s.mainTarget },
+    { label: 'Deck principal', current: s.mainSlots, target: s.mainTarget },
     { label: 'Runes', current: s.runeSlots, target: s.runeTarget },
-    { label: 'Battlefields', current: s.battlefieldCount, target: s.battlefieldTarget },
+    { label: 'Champs de bataille', current: s.battlefieldCount, target: s.battlefieldTarget },
   ];
 
   return (
     <div className="deck-meters">
       {rows.map((row) => {
-        const pct = Math.min(100, Math.round((row.current / row.target) * 100));
+        const filled = filledCount(row.current, row.target);
+        const pct = Math.min(100, Math.round((filled / row.target) * 100));
+        const overTarget = row.current > row.target;
         return (
           <div key={row.label} className="meter">
             <div className="meter__label">
               <span>{row.label}</span>
               <span>
-                {row.current} / {row.target}
+                {filled} / {row.target}
               </span>
             </div>
             <div className="meter__track">
               <div className="meter__fill" style={{ width: `${pct}%` }} />
             </div>
+            {overTarget && (
+              <p className="meter__pool">
+                {row.current} disponible{row.current > 1 ? 's' : ''} dans votre collection
+              </p>
+            )}
           </div>
         );
       })}
       {canBuildFullDeck(s) && (
-        <p className="deck-ready-banner">You can build a complete deck with this legend.</p>
+        <p className="deck-ready-banner">Vous pouvez construire un deck complet avec cette légende.</p>
       )}
     </div>
   );

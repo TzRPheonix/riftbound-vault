@@ -121,6 +121,12 @@
   transition: width 0.4s ease;
 }
 
+.meter__pool {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .deck-ready-banner {
   margin: 0.5rem 0 0;
   padding: 0.65rem 1rem;

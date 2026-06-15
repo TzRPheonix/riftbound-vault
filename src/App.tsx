@@ -330,7 +330,7 @@ function App() {
           className={`tab ${tab === 'decks' ? 'tab--active' : ''}`}
           onClick={() => setTab('decks')}
         >
-          Deck possibilities
+          Possibilités de deck
           {suggestions.length > 0 && (
             <span className="tab__badge">{suggestions.length}</span>
           )}
