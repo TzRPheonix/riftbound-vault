@@ -10,9 +10,15 @@ import { META_DECKS } from './data/meta-decks';
 import { buildCardMap, calcMetaDeckResult } from './lib/meta-deck';
 import {
   buildVariantMap,
+  computeFilterRelevance,
+  describeActiveFilters,
   filterCards,
+  filterCompletion,
+  hasActiveCardFilters,
+  isFoilTrackable,
   isLandscapeCard,
   ownedCount,
+  scopedFilterPool,
   uniqueRarities,
   uniqueSacrificeValues,
   uniqueSets,
@@ -120,14 +126,24 @@ function App() {
     return merged;
   }, [collection, foilCollection]);
 
-  const sets = useMemo(() => uniqueSets(cards), [cards]);
-  const rarities = useMemo(() => uniqueRarities(cards), [cards]);
-  const energyValues = useMemo(() => uniqueStatValues(cards, 'energy'), [cards]);
-  const mightValues = useMemo(() => uniqueStatValues(cards, 'might'), [cards]);
-  const sacrificeValues = useMemo(() => uniqueSacrificeValues(cards), [cards]);
+  const filterPool = useMemo(
+    () => scopedFilterPool(cards, setFilter, typeFilter),
+    [cards, setFilter, typeFilter],
+  );
 
-  const filtered = useMemo(() => {
-    const base = filterCards(cards, {
+  const filterRelevance = useMemo(
+    () => computeFilterRelevance(filterPool, typeFilter),
+    [filterPool, typeFilter],
+  );
+
+  const sets = useMemo(() => uniqueSets(cards), [cards]);
+  const rarities = useMemo(() => uniqueRarities(filterPool), [filterPool]);
+  const energyValues = useMemo(() => uniqueStatValues(filterPool, 'energy'), [filterPool]);
+  const mightValues = useMemo(() => uniqueStatValues(filterPool, 'might'), [filterPool]);
+  const sacrificeValues = useMemo(() => uniqueSacrificeValues(filterPool), [filterPool]);
+
+  const cardFilters = useMemo(
+    () => ({
       search,
       set: setFilter,
       domain: domainFilter as DomainId | '',
@@ -136,6 +152,31 @@ function App() {
       energyFilter,
       mightFilter,
       sacrificeFilter,
+    }),
+    [search, setFilter, domainFilter, typeFilter, rarityFilter, energyFilter, mightFilter, sacrificeFilter],
+  );
+
+  useEffect(() => {
+    if (!filterRelevance.domain && domainFilter) setDomainFilter('');
+    if (!filterRelevance.rarity && rarityFilter) setRarityFilter('');
+    if (!filterRelevance.energy && energyFilter) setEnergyFilter('');
+    if (!filterRelevance.might && mightFilter) setMightFilter('');
+    if (!filterRelevance.sacrifice && sacrificeFilter) setSacrificeFilter('');
+    if (!filterRelevance.foilToggle && foilOnly) setFoilOnly(false);
+  }, [filterRelevance, domainFilter, rarityFilter, energyFilter, mightFilter, sacrificeFilter, foilOnly]);
+
+  const activeFilterCompletion = useMemo(() => {
+    if (!hasActiveCardFilters(cardFilters)) return null;
+    const stats = filterCompletion(cards, cardFilters, effectiveCollection);
+    return {
+      label: describeActiveFilters(cardFilters),
+      ...stats,
+    };
+  }, [cards, cardFilters, effectiveCollection]);
+
+  const filtered = useMemo(() => {
+    const base = filterCards(cards, {
+      ...cardFilters,
       ownedOnly,
       collection: effectiveCollection,
     });
@@ -156,14 +197,7 @@ function App() {
     return result;
   }, [
     cards,
-    search,
-    setFilter,
-    domainFilter,
-    typeFilter,
-    rarityFilter,
-    energyFilter,
-    mightFilter,
-    sacrificeFilter,
+    cardFilters,
     ownedOnly,
     foilOnly,
     sortBy,
@@ -369,6 +403,7 @@ function App() {
               sacrificeFilter={sacrificeFilter}
               onSacrificeChange={setSacrificeFilter}
               sacrificeValues={sacrificeValues}
+              relevance={filterRelevance}
               ownedOnly={ownedOnly}
               onOwnedOnlyChange={setOwnedOnly}
               foilOnly={foilOnly}
@@ -384,6 +419,7 @@ function App() {
               uniqueOwned={uniqueOwned}
               collectionValue={collectionValue}
               setStats={setStats}
+              filterCompletion={activeFilterCompletion}
             />
             <p className="results-count">
               {filtered.length} cartes ·{' '}
@@ -402,7 +438,7 @@ function App() {
                   foil={foilCollection[card.id] ?? 0}
                   price={prices[card.code]}
                   onChange={(d) => updateQty(card.id, d)}
-                  onFoilChange={(d) => updateFoil(card.id, d)}
+                  onFoilChange={isFoilTrackable(card) ? (d) => updateFoil(card.id, d) : undefined}
                   quickAdd={quickAdd}
                   onOpen={() => setZoomCardId(card.id)}
                 />

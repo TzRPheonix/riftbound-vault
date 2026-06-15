@@ -11,6 +11,9 @@ export const DOMAIN_COLORS: Record<DomainId, string> = {
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'showcase'] as const;
 
+/** Showcase (and above epic) cards are always reverse — foil tracking is pointless. */
+const FOIL_EXCLUDED_RARITIES = new Set<string>(['showcase']);
+
 export const RARITY_LABELS: Record<string, string> = {
   common: 'Common',
   uncommon: 'Uncommon',
@@ -18,6 +21,117 @@ export const RARITY_LABELS: Record<string, string> = {
   epic: 'Epic',
   showcase: 'Showcase',
 };
+
+export const TYPE_LABELS: Record<string, string> = {
+  legend: 'Légendes',
+  unit: 'Unités',
+  spell: 'Sorts',
+  gear: 'Équipements',
+  rune: 'Runes',
+  battlefield: 'Champs de bataille',
+};
+
+export interface CardFilterState {
+  search?: string;
+  set?: string;
+  domain?: DomainId | '';
+  type?: string;
+  rarityFilter?: string;
+  energyFilter?: string;
+  mightFilter?: string;
+  sacrificeFilter?: string;
+}
+
+export interface FilterRelevance {
+  domain: boolean;
+  rarity: boolean;
+  energy: boolean;
+  might: boolean;
+  sacrifice: boolean;
+  foilToggle: boolean;
+}
+
+export function isFoilTrackable(card: Card): boolean {
+  return !FOIL_EXCLUDED_RARITIES.has(card.rarity);
+}
+
+const PLAYABLE_DOMAINS = new Set<DomainId>(['fury', 'calm', 'mind', 'body', 'chaos', 'order']);
+
+function poolHasMeaningfulDomains(pool: Card[]): boolean {
+  const domains = new Set<DomainId>();
+  for (const card of pool) {
+    for (const d of card.domains) {
+      if (PLAYABLE_DOMAINS.has(d)) domains.add(d);
+    }
+  }
+  return domains.size > 1;
+}
+
+const TYPE_FILTER_OVERRIDES: Record<string, Partial<FilterRelevance>> = {
+  battlefield: { domain: false, rarity: false, energy: false, might: false, sacrifice: false },
+  rune: { energy: false, might: false, sacrifice: false },
+  legend: { energy: false, might: false, sacrifice: false },
+  spell: { might: false },
+  gear: { might: false },
+};
+
+export function hasActiveCardFilters(filters: CardFilterState): boolean {
+  return !!(
+    filters.search?.trim() ||
+    filters.set ||
+    filters.domain ||
+    filters.type ||
+    filters.rarityFilter ||
+    filters.energyFilter ||
+    filters.mightFilter ||
+    filters.sacrificeFilter
+  );
+}
+
+export function describeActiveFilters(filters: CardFilterState): string {
+  const parts: string[] = [];
+  if (filters.type) parts.push(TYPE_LABELS[filters.type] ?? filters.type);
+  if (filters.set) parts.push(filters.set);
+  if (filters.domain) parts.push(filters.domain);
+  if (filters.rarityFilter) parts.push(RARITY_LABELS[filters.rarityFilter] ?? filters.rarityFilter);
+  if (filters.energyFilter) {
+    parts.push(filters.energyFilter === 'none' ? 'sans coût' : `coût ${filters.energyFilter}`);
+  }
+  if (filters.mightFilter) {
+    parts.push(filters.mightFilter === 'none' ? 'sans Might' : `Might ${filters.mightFilter}`);
+  }
+  if (filters.sacrificeFilter) {
+    parts.push(
+      filters.sacrificeFilter === 'none'
+        ? 'sans runes sacrifiées'
+        : `${filters.sacrificeFilter} rune(s) sacr.`,
+    );
+  }
+  if (filters.search?.trim()) parts.push(`« ${filters.search.trim()} »`);
+  return parts.join(' · ');
+}
+
+export function filterCompletion(
+  cards: Card[],
+  filters: CardFilterState,
+  collection: Collection,
+): { owned: number; total: number; pct: number } {
+  const scope = filterCards(cards, { ...filters, ownedOnly: false });
+  const total = scope.length;
+  const owned = scope.filter((c) => ownedCount(collection, c.id) > 0).length;
+  return { owned, total, pct: total > 0 ? (owned / total) * 100 : 0 };
+}
+
+export function scopedFilterPool(
+  cards: Card[],
+  setFilter = '',
+  typeFilter = '',
+): Card[] {
+  let pool = cards;
+  if (setFilter) pool = pool.filter((c) => c.set === setFilter);
+  if (typeFilter) pool = pool.filter((c) => c.types.includes(typeFilter as Card['types'][number]));
+  return pool;
+}
 
 export function isLegend(card: Card): boolean {
   return card.types.includes('legend');
@@ -107,6 +221,29 @@ export function uniqueStatValues(cards: Card[], key: StatFilterKey): number[] {
     if (value != null) values.add(value);
   }
   return [...values].sort((a, b) => a - b);
+}
+
+function poolHasVariedStat(pool: Card[], key: StatFilterKey): boolean {
+  const values = new Set<number | null>(pool.map((c) => c[key]));
+  if (values.size > 1) return true;
+  return values.has(null) && [...values].some((v) => v != null);
+}
+
+function poolHasVariedSacrifice(pool: Card[]): boolean {
+  const values = new Set<number | null>(pool.map((c) => cardSacrificeCount(c)));
+  return values.size > 1;
+}
+
+export function computeFilterRelevance(pool: Card[], typeFilter = ''): FilterRelevance {
+  const overrides = typeFilter ? TYPE_FILTER_OVERRIDES[typeFilter] : undefined;
+  return {
+    domain: overrides?.domain ?? poolHasMeaningfulDomains(pool),
+    rarity: overrides?.rarity ?? uniqueRarities(pool).length > 1,
+    energy: overrides?.energy ?? poolHasVariedStat(pool, 'energy'),
+    might: overrides?.might ?? poolHasVariedStat(pool, 'might'),
+    sacrifice: overrides?.sacrifice ?? poolHasVariedSacrifice(pool),
+    foilToggle: pool.some(isFoilTrackable),
+  };
 }
 
 export function matchesStatFilter(value: number | null, filter: string): boolean {

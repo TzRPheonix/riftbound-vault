@@ -1,5 +1,5 @@
 import { FilterSelect, type FilterSelectOption } from './FilterSelect';
-import { RARITY_LABELS } from '../lib/cards';
+import { RARITY_LABELS, TYPE_LABELS, type FilterRelevance } from '../lib/cards';
 import './Toolbar.css';
 
 const DOMAIN_OPTIONS: FilterSelectOption[] = [
@@ -14,12 +14,7 @@ const DOMAIN_OPTIONS: FilterSelectOption[] = [
 
 const TYPE_OPTIONS: FilterSelectOption[] = [
   { value: '', label: 'Tous les types' },
-  { value: 'legend', label: 'Legend' },
-  { value: 'unit', label: 'Unit' },
-  { value: 'spell', label: 'Spell' },
-  { value: 'gear', label: 'Gear' },
-  { value: 'rune', label: 'Rune' },
-  { value: 'battlefield', label: 'Battlefield' },
+  ...Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label })),
 ];
 
 function statOptions(label: string, noneLabel: string, values: number[]): FilterSelectOption[] {
@@ -51,6 +46,7 @@ interface ToolbarProps {
   sacrificeFilter: string;
   onSacrificeChange: (v: string) => void;
   sacrificeValues: number[];
+  relevance: FilterRelevance;
   ownedOnly: boolean;
   onOwnedOnlyChange: (v: boolean) => void;
   foilOnly: boolean;
@@ -83,6 +79,7 @@ export function Toolbar({
   sacrificeFilter,
   onSacrificeChange,
   sacrificeValues,
+  relevance,
   ownedOnly,
   onOwnedOnlyChange,
   foilOnly,
@@ -103,6 +100,8 @@ export function Toolbar({
     ...rarities.map((r) => ({ value: r, label: RARITY_LABELS[r] ?? r })),
   ];
 
+  const hasStatFilters = relevance.energy || relevance.might || relevance.sacrifice;
+
   return (
     <div className="toolbar">
       <div className="toolbar__search-wrap">
@@ -116,77 +115,107 @@ export function Toolbar({
       </div>
 
       <div className="toolbar__filters">
-        <FilterSelect label="Set" value={setFilter} options={setOptions} onChange={onSetChange} />
-        <FilterSelect
-          label="Domaine"
-          value={domainFilter}
-          options={DOMAIN_OPTIONS}
-          onChange={onDomainChange}
-        />
-        <FilterSelect label="Type" value={typeFilter} options={TYPE_OPTIONS} onChange={onTypeChange} />
-        <FilterSelect
-          label="Rareté"
-          value={rarityFilter}
-          options={rarityOptions}
-          onChange={onRarityChange}
-        />
-        <FilterSelect
-          label="Coût runes"
-          value={energyFilter}
-          options={statOptions('Tous', 'Sans coût', energyValues)}
-          onChange={onEnergyChange}
-        />
-        <FilterSelect
-          label="Might"
-          value={mightFilter}
-          options={statOptions('Tous', 'Sans Might', mightValues)}
-          onChange={onMightChange}
-        />
-        <FilterSelect
-          label="Runes sacr."
-          value={sacrificeFilter}
-          options={statOptions('Toutes', 'Aucune', sacrificeValues)}
-          onChange={onSacrificeChange}
-        />
-        <FilterSelect
-          label="Trier par"
-          value={sortBy}
-          options={[
-            { value: '', label: 'Par défaut' },
-            { value: 'price-asc', label: 'Prix ↑' },
-            { value: 'price-desc', label: 'Prix ↓' },
-          ]}
-          onChange={onSortChange}
-        />
+        <div className="toolbar__group">
+          <span className="toolbar__group-label">Carte</span>
+          <div className="toolbar__group-row">
+            <FilterSelect label="Set" value={setFilter} options={setOptions} onChange={onSetChange} />
+            <FilterSelect label="Type" value={typeFilter} options={TYPE_OPTIONS} onChange={onTypeChange} />
+            {relevance.domain && (
+              <FilterSelect
+                label="Domaine"
+                value={domainFilter}
+                options={DOMAIN_OPTIONS}
+                onChange={onDomainChange}
+              />
+            )}
+            {relevance.rarity && (
+              <FilterSelect
+                label="Rareté"
+                value={rarityFilter}
+                options={rarityOptions}
+                onChange={onRarityChange}
+              />
+            )}
+          </div>
+        </div>
 
-        <div className="toolbar__toggles">
-          <label className="toolbar__toggle" title="Un clic sur une carte l'ajoute à la collection">
-            <input
-              type="checkbox"
-              checked={quickAdd}
-              onChange={(e) => onQuickAddChange(e.target.checked)}
+        {hasStatFilters && (
+          <div className="toolbar__group">
+            <span className="toolbar__group-label">Stats</span>
+            <div className="toolbar__group-row">
+              {relevance.energy && (
+                <FilterSelect
+                  label="Coût runes"
+                  value={energyFilter}
+                  options={statOptions('Tous', 'Sans coût', energyValues)}
+                  onChange={onEnergyChange}
+                />
+              )}
+              {relevance.might && (
+                <FilterSelect
+                  label="Might"
+                  value={mightFilter}
+                  options={statOptions('Tous', 'Sans Might', mightValues)}
+                  onChange={onMightChange}
+                />
+              )}
+              {relevance.sacrifice && (
+                <FilterSelect
+                  label="Runes sacr."
+                  value={sacrificeFilter}
+                  options={statOptions('Toutes', 'Aucune', sacrificeValues)}
+                  onChange={onSacrificeChange}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="toolbar__group">
+          <span className="toolbar__group-label">Affichage</span>
+          <div className="toolbar__group-row">
+            <FilterSelect
+              label="Trier par"
+              value={sortBy}
+              options={[
+                { value: '', label: 'Par défaut' },
+                { value: 'price-asc', label: 'Prix ↑' },
+                { value: 'price-desc', label: 'Prix ↓' },
+              ]}
+              onChange={onSortChange}
             />
-            <span>Ajout rapide</span>
-          </label>
-          <label className="toolbar__toggle">
-            <input
-              type="checkbox"
-              checked={ownedOnly}
-              onChange={(e) => onOwnedOnlyChange(e.target.checked)}
-            />
-            <span>Possédées</span>
-          </label>
-          <label className="toolbar__toggle">
-            <input
-              type="checkbox"
-              checked={foilOnly}
-              onChange={(e) => onFoilOnlyChange(e.target.checked)}
-            />
-            <span>Foil ✦</span>
-          </label>
+
+            <div className="toolbar__toggles">
+              <label className="toolbar__toggle" title="Un clic sur une carte l'ajoute à la collection">
+                <input
+                  type="checkbox"
+                  checked={quickAdd}
+                  onChange={(e) => onQuickAddChange(e.target.checked)}
+                />
+                <span>Ajout rapide</span>
+              </label>
+              <label className="toolbar__toggle">
+                <input
+                  type="checkbox"
+                  checked={ownedOnly}
+                  onChange={(e) => onOwnedOnlyChange(e.target.checked)}
+                />
+                <span>Possédées</span>
+              </label>
+              {relevance.foilToggle && (
+                <label className="toolbar__toggle">
+                  <input
+                    type="checkbox"
+                    checked={foilOnly}
+                    onChange={(e) => onFoilOnlyChange(e.target.checked)}
+                  />
+                  <span>Foil ✦</span>
+                </label>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-
     </div>
   );
 }
