@@ -357,6 +357,7 @@ export function filterCards(
     mightFilters?: string[];
     sacrificeFilters?: string[];
     ownedOnly?: boolean;
+    notOwnedOnly?: boolean;
     collection?: Collection;
   },
 ): Card[] {
@@ -378,6 +379,9 @@ export function filterCards(
     if (!matchesStatFilters(card.power, sacrificeFilters)) return false;
     if (opts.ownedOnly && opts.collection) {
       if (ownedCount(opts.collection, card.id) < 1) return false;
+    }
+    if (opts.notOwnedOnly && opts.collection) {
+      if (ownedCount(opts.collection, card.id) > 0) return false;
     }
     if (q && !cardMatchesSearch(card, q)) return false;
     return true;

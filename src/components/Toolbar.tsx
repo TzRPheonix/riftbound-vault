@@ -52,6 +52,8 @@ interface ToolbarProps {
   relevance: FilterRelevance;
   ownedOnly: boolean;
   onOwnedOnlyChange: (v: boolean) => void;
+  notOwnedOnly: boolean;
+  onNotOwnedOnlyChange: (v: boolean) => void;
   foilOnly: boolean;
   onFoilOnlyChange: (v: boolean) => void;
   sortBy: string;
@@ -85,6 +87,8 @@ export function Toolbar({
   relevance,
   ownedOnly,
   onOwnedOnlyChange,
+  notOwnedOnly,
+  onNotOwnedOnlyChange,
   foilOnly,
   onFoilOnlyChange,
   sortBy,
@@ -226,6 +230,14 @@ export function Toolbar({
                   onChange={(e) => onOwnedOnlyChange(e.target.checked)}
                 />
                 <span>Possédées</span>
+              </label>
+              <label className="toolbar__toggle">
+                <input
+                  type="checkbox"
+                  checked={notOwnedOnly}
+                  onChange={(e) => onNotOwnedOnlyChange(e.target.checked)}
+                />
+                <span>Non possédées</span>
               </label>
               {relevance.foilToggle && (
                 <label className="toolbar__toggle">

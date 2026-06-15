@@ -64,6 +64,7 @@ function App() {
   const [mightFilters, setMightFilters] = useState<string[]>([]);
   const [sacrificeFilters, setSacrificeFilters] = useState<string[]>([]);
   const [ownedOnly, setOwnedOnly] = useState(false);
+  const [notOwnedOnly, setNotOwnedOnly] = useState(false);
   const [foilOnly, setFoilOnly] = useState(false);
   const [sortBy, setSortBy] = useState('');
   const [quickAdd, setQuickAdd] = useState(() => loadQuickAdd());
@@ -196,6 +197,7 @@ function App() {
     const base = filterCards(cards, {
       ...cardFilters,
       ownedOnly,
+      notOwnedOnly,
       collection: effectiveCollection,
     });
     let result = foilOnly ? base.filter((c) => (foilCollection[c.id] ?? 0) > 0) : base;
@@ -217,6 +219,7 @@ function App() {
     cards,
     cardFilters,
     ownedOnly,
+    notOwnedOnly,
     foilOnly,
     sortBy,
     effectiveCollection,
@@ -423,7 +426,15 @@ function App() {
               sacrificeValues={sacrificeValues}
               relevance={filterRelevance}
               ownedOnly={ownedOnly}
-              onOwnedOnlyChange={setOwnedOnly}
+              onOwnedOnlyChange={(v) => {
+                setOwnedOnly(v);
+                if (v) setNotOwnedOnly(false);
+              }}
+              notOwnedOnly={notOwnedOnly}
+              onNotOwnedOnlyChange={(v) => {
+                setNotOwnedOnly(v);
+                if (v) setOwnedOnly(false);
+              }}
               foilOnly={foilOnly}
               onFoilOnlyChange={setFoilOnly}
               sortBy={sortBy}
