@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Card, Collection } from '../types';
+import type { Collection } from '../types';
+import { isNamedChampionUnit } from '../lib/cards';
 import type { MetaDeckResult, SlotResult } from '../lib/meta-deck';
 import { TIER_ORDER } from '../data/meta-decks';
 import './MetaDeckPanel.css';
@@ -69,11 +70,6 @@ export function MetaDeckPanel({ results, onCollectionChange }: MetaDeckPanelProp
   );
 }
 
-function isChampionUnit(card: Card | null, champion: string): boolean {
-  if (!card) return false;
-  return card.name === champion || card.name.startsWith(`${champion},`);
-}
-
 function DeckDetail({
   result: r,
   onChange,
@@ -81,8 +77,8 @@ function DeckDetail({
   result: MetaDeckResult;
   onChange: (id: string, delta: number) => void;
 }) {
-  const championSlots = r.mainSlots.filter((s) => isChampionUnit(s.card, r.deck.champion));
-  const mainSlots = r.mainSlots.filter((s) => !isChampionUnit(s.card, r.deck.champion));
+  const championSlots = r.mainSlots.filter((s) => s.card && isNamedChampionUnit(s.card, r.deck.champion));
+  const mainSlots = r.mainSlots.filter((s) => !s.card || !isNamedChampionUnit(s.card, r.deck.champion));
   const championOwned = championSlots.reduce((sum, s) => sum + s.owned, 0);
   const championTotal = championSlots.reduce((sum, s) => sum + s.needed, 0);
 

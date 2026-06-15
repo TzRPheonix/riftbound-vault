@@ -1,5 +1,6 @@
 import { FilterSelect, type FilterSelectOption } from './FilterSelect';
-import { RARITY_LABELS, TYPE_LABELS, type FilterRelevance } from '../lib/cards';
+import { FilterChecklist } from './FilterChecklist';
+import { RARITY_LABELS, TYPE_FILTER_OPTIONS, type FilterRelevance, type TypeFilterId } from '../lib/cards';
 import './Toolbar.css';
 
 const DOMAIN_OPTIONS: FilterSelectOption[] = [
@@ -10,11 +11,6 @@ const DOMAIN_OPTIONS: FilterSelectOption[] = [
   { value: 'body', label: 'Body' },
   { value: 'chaos', label: 'Chaos' },
   { value: 'order', label: 'Order' },
-];
-
-const TYPE_OPTIONS: FilterSelectOption[] = [
-  { value: '', label: 'Tous les types' },
-  ...Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label })),
 ];
 
 function statOptions(label: string, noneLabel: string, values: number[]): FilterSelectOption[] {
@@ -32,8 +28,8 @@ interface ToolbarProps {
   onSetChange: (v: string) => void;
   domainFilter: string;
   onDomainChange: (v: string) => void;
-  typeFilter: string;
-  onTypeChange: (v: string) => void;
+  typeFilters: TypeFilterId[];
+  onTypeFiltersChange: (v: TypeFilterId[]) => void;
   rarityFilter: string;
   onRarityChange: (v: string) => void;
   rarities: string[];
@@ -65,8 +61,8 @@ export function Toolbar({
   onSetChange,
   domainFilter,
   onDomainChange,
-  typeFilter,
-  onTypeChange,
+  typeFilters,
+  onTypeFiltersChange,
   rarityFilter,
   onRarityChange,
   rarities,
@@ -119,7 +115,13 @@ export function Toolbar({
           <span className="toolbar__group-label">Carte</span>
           <div className="toolbar__group-row">
             <FilterSelect label="Set" value={setFilter} options={setOptions} onChange={onSetChange} />
-            <FilterSelect label="Type" value={typeFilter} options={TYPE_OPTIONS} onChange={onTypeChange} />
+            <FilterChecklist
+              label="Types"
+              values={typeFilters}
+              options={TYPE_FILTER_OPTIONS}
+              onChange={onTypeFiltersChange}
+              emptyLabel="Tous les types"
+            />
             {relevance.domain && (
               <FilterSelect
                 label="Domaine"

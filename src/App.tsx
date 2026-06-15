@@ -23,6 +23,7 @@ import {
   uniqueSacrificeValues,
   uniqueSets,
   uniqueStatValues,
+  type TypeFilterId,
 } from './lib/cards';
 import { suggestDecks } from './lib/deck';
 import {
@@ -57,7 +58,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [setFilter, setSetFilter] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [typeFilters, setTypeFilters] = useState<TypeFilterId[]>([]);
   const [rarityFilter, setRarityFilter] = useState('');
   const [energyFilter, setEnergyFilter] = useState('');
   const [mightFilter, setMightFilter] = useState('');
@@ -127,13 +128,13 @@ function App() {
   }, [collection, foilCollection]);
 
   const filterPool = useMemo(
-    () => scopedFilterPool(cards, setFilter, typeFilter),
-    [cards, setFilter, typeFilter],
+    () => scopedFilterPool(cards, setFilter, typeFilters),
+    [cards, setFilter, typeFilters],
   );
 
   const filterRelevance = useMemo(
-    () => computeFilterRelevance(filterPool, typeFilter),
-    [filterPool, typeFilter],
+    () => computeFilterRelevance(filterPool, typeFilters),
+    [filterPool, typeFilters],
   );
 
   const sets = useMemo(() => uniqueSets(cards), [cards]);
@@ -147,13 +148,13 @@ function App() {
       search,
       set: setFilter,
       domain: domainFilter as DomainId | '',
-      type: typeFilter,
+      types: typeFilters,
       rarityFilter,
       energyFilter,
       mightFilter,
       sacrificeFilter,
     }),
-    [search, setFilter, domainFilter, typeFilter, rarityFilter, energyFilter, mightFilter, sacrificeFilter],
+    [search, setFilter, domainFilter, typeFilters, rarityFilter, energyFilter, mightFilter, sacrificeFilter],
   );
 
   useEffect(() => {
@@ -231,10 +232,10 @@ function App() {
   );
 
   const gridMode = useMemo(() => {
-    if (typeFilter === 'battlefield') return 'battlefields';
+    if (typeFilters.length === 1 && typeFilters[0] === 'battlefield') return 'battlefields';
     if (filtered.some(isLandscapeCard)) return 'mixed';
     return 'default';
-  }, [typeFilter, filtered]);
+  }, [typeFilters, filtered]);
 
   const suggestions = useMemo(
     () => suggestDecks(cards, effectiveCollection),
@@ -389,8 +390,8 @@ function App() {
               onSetChange={setSetFilter}
               domainFilter={domainFilter}
               onDomainChange={setDomainFilter}
-              typeFilter={typeFilter}
-              onTypeChange={setTypeFilter}
+              typeFilters={typeFilters}
+              onTypeFiltersChange={setTypeFilters}
               rarityFilter={rarityFilter}
               onRarityChange={setRarityFilter}
               rarities={rarities}

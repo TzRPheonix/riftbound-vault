@@ -25,17 +25,30 @@ export const RARITY_LABELS: Record<string, string> = {
 export const TYPE_LABELS: Record<string, string> = {
   legend: 'Légendes',
   unit: 'Unités',
+  'champion-unit': 'Unités champion',
   spell: 'Sorts',
   gear: 'Équipements',
   rune: 'Runes',
   battlefield: 'Champs de bataille',
 };
 
+export const TYPE_FILTER_OPTIONS = [
+  { value: 'legend', label: TYPE_LABELS.legend },
+  { value: 'unit', label: TYPE_LABELS.unit },
+  { value: 'champion-unit', label: TYPE_LABELS['champion-unit'] },
+  { value: 'spell', label: TYPE_LABELS.spell },
+  { value: 'gear', label: TYPE_LABELS.gear },
+  { value: 'rune', label: TYPE_LABELS.rune },
+  { value: 'battlefield', label: TYPE_LABELS.battlefield },
+] as const;
+
+export type TypeFilterId = (typeof TYPE_FILTER_OPTIONS)[number]['value'];
+
 export interface CardFilterState {
   search?: string;
   set?: string;
   domain?: DomainId | '';
-  type?: string;
+  types?: TypeFilterId[];
   rarityFilter?: string;
   energyFilter?: string;
   mightFilter?: string;
@@ -80,7 +93,7 @@ export function hasActiveCardFilters(filters: CardFilterState): boolean {
     filters.search?.trim() ||
     filters.set ||
     filters.domain ||
-    filters.type ||
+    (filters.types && filters.types.length > 0) ||
     filters.rarityFilter ||
     filters.energyFilter ||
     filters.mightFilter ||
@@ -90,7 +103,9 @@ export function hasActiveCardFilters(filters: CardFilterState): boolean {
 
 export function describeActiveFilters(filters: CardFilterState): string {
   const parts: string[] = [];
-  if (filters.type) parts.push(TYPE_LABELS[filters.type] ?? filters.type);
+  if (filters.types && filters.types.length > 0) {
+    parts.push(filters.types.map((t) => TYPE_LABELS[t] ?? t).join(', '));
+  }
   if (filters.set) parts.push(filters.set);
   if (filters.domain) parts.push(filters.domain);
   if (filters.rarityFilter) parts.push(RARITY_LABELS[filters.rarityFilter] ?? filters.rarityFilter);
@@ -125,12 +140,56 @@ export function filterCompletion(
 export function scopedFilterPool(
   cards: Card[],
   setFilter = '',
-  typeFilter = '',
+  typeFilters: TypeFilterId[] = [],
 ): Card[] {
   let pool = cards;
   if (setFilter) pool = pool.filter((c) => c.set === setFilter);
-  if (typeFilter) pool = pool.filter((c) => c.types.includes(typeFilter as Card['types'][number]));
+  if (typeFilters.length > 0) {
+    pool = pool.filter((c) => typeFilters.some((t) => matchesTypeCategory(c, t)));
+  }
   return pool;
+}
+
+/** Champion units use the "Name, Title" naming pattern (e.g. Kai'Sa, Survivor). */
+export function isChampionUnitCard(card: Card): boolean {
+  return card.types.includes('unit') && card.name.includes(',');
+}
+
+export function isRegularUnit(card: Card): boolean {
+  return card.types.includes('unit') && !isChampionUnitCard(card);
+}
+
+export function isNamedChampionUnit(card: Card, champion: string): boolean {
+  return (
+    isChampionUnitCard(card) &&
+    (card.name === champion || card.name.startsWith(`${champion},`))
+  );
+}
+
+export function matchesTypeCategory(card: Card, category: TypeFilterId): boolean {
+  switch (category) {
+    case 'champion-unit':
+      return isChampionUnitCard(card);
+    case 'unit':
+      return isRegularUnit(card);
+    default:
+      return card.types.includes(category);
+  }
+}
+
+function relevanceKeyForType(type: TypeFilterId): string {
+  return type === 'champion-unit' ? 'unit' : type;
+}
+
+function mergeRelevance(a: FilterRelevance, b: FilterRelevance): FilterRelevance {
+  return {
+    domain: a.domain || b.domain,
+    rarity: a.rarity || b.rarity,
+    energy: a.energy || b.energy,
+    might: a.might || b.might,
+    sacrifice: a.sacrifice || b.sacrifice,
+    foilToggle: a.foilToggle || b.foilToggle,
+  };
 }
 
 export function isLegend(card: Card): boolean {
@@ -234,7 +293,24 @@ function poolHasVariedSacrifice(pool: Card[]): boolean {
   return values.size > 1;
 }
 
-export function computeFilterRelevance(pool: Card[], typeFilter = ''): FilterRelevance {
+export function computeFilterRelevance(pool: Card[], typeFilters: TypeFilterId[] = []): FilterRelevance {
+  if (typeFilters.length === 0) {
+    return computeFilterRelevanceForPool(pool, '');
+  }
+  return typeFilters.reduce((acc, type) => {
+    const typePool = pool.filter((c) => matchesTypeCategory(c, type));
+    return mergeRelevance(acc, computeFilterRelevanceForPool(typePool, relevanceKeyForType(type)));
+  }, {
+    domain: false,
+    rarity: false,
+    energy: false,
+    might: false,
+    sacrifice: false,
+    foilToggle: false,
+  });
+}
+
+function computeFilterRelevanceForPool(pool: Card[], typeFilter: string): FilterRelevance {
   const overrides = typeFilter ? TYPE_FILTER_OVERRIDES[typeFilter] : undefined;
   return {
     domain: overrides?.domain ?? poolHasMeaningfulDomains(pool),
@@ -260,7 +336,7 @@ export function filterCards(
     search?: string;
     set?: string;
     domain?: DomainId | '';
-    type?: string;
+    types?: TypeFilterId[];
     rarityFilter?: string;
     energyFilter?: string;
     mightFilter?: string;
@@ -270,12 +346,11 @@ export function filterCards(
   },
 ): Card[] {
   const q = opts.search?.trim().toLowerCase() ?? '';
+  const types = opts.types ?? [];
   return cards.filter((card) => {
     if (opts.set && card.set !== opts.set) return false;
     if (opts.domain && !card.domains.includes(opts.domain)) return false;
-    if (opts.type && !card.types.includes(opts.type as Card['types'][number])) {
-      return false;
-    }
+    if (types.length > 0 && !types.some((t) => matchesTypeCategory(card, t))) return false;
     if (opts.rarityFilter && card.rarity !== opts.rarityFilter) return false;
     if (!matchesStatFilter(card.energy, opts.energyFilter ?? '')) return false;
     if (!matchesStatFilter(card.might, opts.mightFilter ?? '')) return false;
