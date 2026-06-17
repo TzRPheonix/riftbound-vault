@@ -14,6 +14,8 @@ interface CardTileProps {
   selected?: boolean;
   quickAdd?: boolean;
   onOpen?: () => void;
+  inShoppingList?: boolean;
+  onToggleShopping?: () => void;
 }
 
 export function CardTile({
@@ -27,6 +29,8 @@ export function CardTile({
   selected = false,
   quickAdd = false,
   onOpen,
+  inShoppingList = false,
+  onToggleShopping,
 }: CardTileProps) {
   const primaryDomain = card.domains[0];
   const accent = primaryDomain ? DOMAIN_COLORS[primaryDomain] : '#c9a227';
@@ -64,6 +68,20 @@ export function CardTile({
             {foil > 0 && <span className="card-tile__foil-badge">✦ {foil}</span>}
             <span className="card-tile__badge">{owned + foil}</span>
           </div>
+        )}
+        {onToggleShopping && (
+          <button
+            type="button"
+            className={`card-tile__cart ${inShoppingList ? 'card-tile__cart--active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleShopping();
+            }}
+            title={inShoppingList ? 'Retirer de la liste d\'achats' : 'Ajouter à la liste d\'achats'}
+            aria-label={inShoppingList ? 'Retirer de la liste d\'achats' : 'Ajouter à la liste d\'achats'}
+          >
+            🛒
+          </button>
         )}
       </div>
 

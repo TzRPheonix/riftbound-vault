@@ -48,6 +48,14 @@ export interface Card {
 
 export type Collection = Record<string, number>;
 
+/** Shopping list entry — checked = bought/found (does not affect collection). */
+export interface ShoppingListEntry {
+  checked: boolean;
+  qty: number;
+}
+
+export type ShoppingList = Record<string, ShoppingListEntry>;
+
 export interface CardPrice {
   lowest: number | null;
   avg30d: number | null;

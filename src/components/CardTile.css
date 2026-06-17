@@ -121,6 +121,38 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
+.card-tile__cart {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
+  z-index: 2;
+}
+
+.card-tile:hover .card-tile__cart,
+.card-tile__cart--active {
+  opacity: 1;
+}
+
+.card-tile__cart:hover {
+  background: rgba(201, 162, 39, 0.35);
+  transform: scale(1.08);
+}
+
+.card-tile__cart--active {
+  background: rgba(201, 162, 39, 0.45);
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.6);
+}
+
 .card-tile__meta {
   padding: 0 0.15rem;
 }

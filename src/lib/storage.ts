@@ -1,7 +1,8 @@
-import type { Collection, CollectionExport } from '../types';
+import type { Collection, CollectionExport, ShoppingList } from '../types';
 
 const STORAGE_KEY = 'riftbound-vault-collection-v1';
 const FOIL_KEY = 'riftbound-vault-foils-v1';
+const SHOPPING_KEY = 'riftbound-vault-shopping-v1';
 
 export function loadCollection(): Collection {
   try {
@@ -59,6 +60,22 @@ export function loadFoils(): Collection {
 
 export function saveFoils(foils: Collection): void {
   localStorage.setItem(FOIL_KEY, JSON.stringify(foils));
+}
+
+export function loadShoppingList(): ShoppingList {
+  try {
+    const raw = localStorage.getItem(SHOPPING_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as ShoppingList;
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+export function saveShoppingList(list: ShoppingList): void {
+  localStorage.setItem(SHOPPING_KEY, JSON.stringify(list));
 }
 
 export function downloadJson(filename: string, content: string): void {

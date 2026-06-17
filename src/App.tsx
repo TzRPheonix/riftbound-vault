@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Card, Collection, DomainId, PriceMap } from './types';
+import type { Card, Collection, DomainId, PriceMap, ShoppingList } from './types';
 import { CardLightbox } from './components/CardLightbox';
 import { CardTile } from './components/CardTile';
 import { CollectionStats } from './components/CollectionStats';
 import { DeckPanel } from './components/DeckPanel';
 import { MetaDeckPanel } from './components/MetaDeckPanel';
+import { ShoppingListPanel } from './components/ShoppingListPanel';
 import { Toolbar } from './components/Toolbar';
 import { META_DECKS } from './data/meta-decks';
 import { buildCardMap, calcMetaDeckResult } from './lib/meta-deck';
@@ -32,12 +33,14 @@ import {
   importCollectionJson,
   loadCollection,
   loadFoils,
+  loadShoppingList,
   saveCollection,
   saveFoils,
+  saveShoppingList,
 } from './lib/storage';
 import './App.css';
 
-type Tab = 'collection' | 'decks' | 'meta';
+type Tab = 'collection' | 'decks' | 'meta' | 'shopping';
 
 const QUICK_ADD_KEY = 'riftbound-vault-quick-add';
 
@@ -69,6 +72,7 @@ function App() {
   const [sortBy, setSortBy] = useState('');
   const [quickAdd, setQuickAdd] = useState(() => loadQuickAdd());
   const [foilCollection, setFoilCollection] = useState<Collection>(() => loadFoils());
+  const [shoppingList, setShoppingList] = useState<ShoppingList>(() => loadShoppingList());
   const [zoomCardId, setZoomCardId] = useState<string | null>(null);
   const [selectedLegendId, setSelectedLegendId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +96,10 @@ function App() {
   useEffect(() => {
     saveFoils(foilCollection);
   }, [foilCollection]);
+
+  useEffect(() => {
+    saveShoppingList(shoppingList);
+  }, [shoppingList]);
 
 
   useEffect(() => {
@@ -120,6 +128,65 @@ function App() {
     });
   }, []);
 
+  const addToShopping = useCallback((items: { cardId: string; qty: number }[]) => {
+    setShoppingList((prev) => {
+      const next = { ...prev };
+      for (const { cardId, qty } of items) {
+        if (qty <= 0) continue;
+        const existing = next[cardId];
+        if (existing) {
+          next[cardId] = { checked: existing.checked, qty: existing.qty + qty };
+        } else {
+          next[cardId] = { checked: false, qty };
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleShoppingListItem = useCallback((cardId: string) => {
+    setShoppingList((prev) => {
+      if (prev[cardId]) {
+        const next = { ...prev };
+        delete next[cardId];
+        return next;
+      }
+      return { ...prev, [cardId]: { checked: false, qty: 1 } };
+    });
+  }, []);
+
+  const toggleShoppingChecked = useCallback((cardId: string) => {
+    setShoppingList((prev) => {
+      const entry = prev[cardId];
+      if (!entry) return prev;
+      return { ...prev, [cardId]: { ...entry, checked: !entry.checked } };
+    });
+  }, []);
+
+  const removeFromShopping = useCallback((cardId: string) => {
+    setShoppingList((prev) => {
+      const next = { ...prev };
+      delete next[cardId];
+      return next;
+    });
+  }, []);
+
+  const clearCheckedShopping = useCallback(() => {
+    setShoppingList((prev) => {
+      const next = { ...prev };
+      for (const [id, entry] of Object.entries(next)) {
+        if (entry.checked) delete next[id];
+      }
+      return next;
+    });
+  }, []);
+
+  const clearShoppingList = useCallback(() => {
+    if (confirm('Vider toute la liste d\'achats ?')) {
+      setShoppingList({});
+    }
+  }, []);
+
   const effectiveCollection = useMemo<Collection>(() => {
     const merged: Collection = { ...collection };
     for (const [id, qty] of Object.entries(foilCollection)) {
@@ -127,6 +194,18 @@ function App() {
     }
     return merged;
   }, [collection, foilCollection]);
+
+  const addAllNotOwnedToShopping = useCallback(() => {
+    const items = cards
+      .filter((c) => ownedCount(effectiveCollection, c.id) === 0)
+      .map((c) => ({ cardId: c.id, qty: 1 }));
+    addToShopping(items);
+  }, [cards, effectiveCollection, addToShopping]);
+
+  const shoppingCount = useMemo(
+    () => Object.values(shoppingList).filter((e) => !e.checked).length,
+    [shoppingList],
+  );
 
   const filterPool = useMemo(
     () => scopedFilterPool(cards, setFilters, typeFilters),
@@ -398,6 +477,16 @@ function App() {
           Meta Decks
           <span className="tab__badge">{META_DECKS.length}</span>
         </button>
+        <button
+          type="button"
+          className={`tab ${tab === 'shopping' ? 'tab--active' : ''}`}
+          onClick={() => setTab('shopping')}
+        >
+          Liste d&apos;achats
+          {shoppingCount > 0 && (
+            <span className="tab__badge">{shoppingCount}</span>
+          )}
+        </button>
       </div>
 
       <main className="app-main">
@@ -470,6 +559,8 @@ function App() {
                   onFoilChange={isFoilTrackable(card) ? (d) => updateFoil(card.id, d) : undefined}
                   quickAdd={quickAdd}
                   onOpen={() => setZoomCardId(card.id)}
+                  inShoppingList={!!shoppingList[card.id]}
+                  onToggleShopping={() => toggleShoppingListItem(card.id)}
                 />
               ))}
             </div>
@@ -482,11 +573,25 @@ function App() {
             onSelectLegend={setSelectedLegendId}
             onCollectionChange={updateQty}
           />
-        ) : (
+        ) : tab === 'meta' ? (
           <MetaDeckPanel
             results={metaResults}
             collection={collection}
             onCollectionChange={updateQty}
+            onAddMissingToShopping={(items) => addToShopping(items)}
+          />
+        ) : (
+          <ShoppingListPanel
+            cards={cards}
+            cardMap={cardMap}
+            shoppingList={shoppingList}
+            collection={effectiveCollection}
+            prices={prices}
+            onToggleChecked={toggleShoppingChecked}
+            onRemove={removeFromShopping}
+            onClearChecked={clearCheckedShopping}
+            onClearAll={clearShoppingList}
+            onAddNotOwned={addAllNotOwnedToShopping}
           />
         )}
       </main>

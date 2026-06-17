@@ -9,11 +9,12 @@ interface MetaDeckPanelProps {
   results: MetaDeckResult[];
   collection: Collection;
   onCollectionChange: (cardId: string, delta: number) => void;
+  onAddMissingToShopping?: (items: { cardId: string; qty: number }[]) => void;
 }
 
 const TIER_LABELS: Record<string, string> = { S: 'S', A: 'A', B: 'B', C: 'C' };
 
-export function MetaDeckPanel({ results, onCollectionChange }: MetaDeckPanelProps) {
+export function MetaDeckPanel({ results, onCollectionChange, onAddMissingToShopping }: MetaDeckPanelProps) {
   const [selectedId, setSelectedId] = useState<string | null>(
     results.length > 0 ? results[0].deck.id : null,
   );
@@ -64,7 +65,13 @@ export function MetaDeckPanel({ results, onCollectionChange }: MetaDeckPanelProp
       </aside>
 
       <main className="meta-panel__detail">
-        {selected ? <DeckDetail result={selected} onChange={onCollectionChange} /> : null}
+        {selected ? (
+          <DeckDetail
+            result={selected}
+            onChange={onCollectionChange}
+            onAddMissingToShopping={onAddMissingToShopping}
+          />
+        ) : null}
       </main>
     </div>
   );
@@ -73,14 +80,33 @@ export function MetaDeckPanel({ results, onCollectionChange }: MetaDeckPanelProp
 function DeckDetail({
   result: r,
   onChange,
+  onAddMissingToShopping,
 }: {
   result: MetaDeckResult;
   onChange: (id: string, delta: number) => void;
+  onAddMissingToShopping?: (items: { cardId: string; qty: number }[]) => void;
 }) {
   const championSlots = r.mainSlots.filter((s) => s.card && isNamedChampionUnit(s.card, r.deck.champion));
   const mainSlots = r.mainSlots.filter((s) => !s.card || !isNamedChampionUnit(s.card, r.deck.champion));
   const championOwned = championSlots.reduce((sum, s) => sum + s.owned, 0);
   const championTotal = championSlots.reduce((sum, s) => sum + s.needed, 0);
+
+  const allSlots = [
+    ...(r.legend ? [{ card: r.legend, needed: 1, owned: r.legendOwned, missing: 1 - r.legendOwned }] : []),
+    ...championSlots,
+    ...mainSlots,
+    ...r.runeSlots,
+    ...r.battlefieldSlots,
+  ];
+  const missingCount = allSlots.reduce((sum, s) => sum + s.missing, 0);
+
+  const handleAddMissing = () => {
+    if (!onAddMissingToShopping) return;
+    const items = allSlots
+      .filter((s) => s.missing > 0 && s.card)
+      .map((s) => ({ cardId: s.card!.id, qty: s.missing }));
+    onAddMissingToShopping(items);
+  };
 
   return (
     <div className="deck-detail">
@@ -94,9 +120,16 @@ function DeckDetail({
           </h2>
           <p className="deck-detail__subtitle">{r.deck.name} · OGN uniquement</p>
         </div>
-        <div className="deck-detail__pct">
-          <span className="deck-detail__pct-value">{r.completeness}%</span>
-          <span className="deck-detail__pct-label">complété</span>
+        <div className="deck-detail__header-actions">
+          {missingCount > 0 && onAddMissingToShopping && (
+            <button type="button" className="btn btn--ghost btn--sm" onClick={handleAddMissing}>
+              🛒 Ajouter manquantes ({missingCount})
+            </button>
+          )}
+          <div className="deck-detail__pct">
+            <span className="deck-detail__pct-value">{r.completeness}%</span>
+            <span className="deck-detail__pct-label">complété</span>
+          </div>
         </div>
       </header>
 
