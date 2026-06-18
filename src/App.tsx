@@ -212,18 +212,6 @@ function App() {
     return merged;
   }, [collection, foilCollection]);
 
-  const addFilteredNotOwnedToShopping = useCallback(() => {
-    const items = filtered
-      .filter((c) => ownedCount(effectiveCollection, c.id) === 0)
-      .map((c) => ({ cardId: c.id, qty: 1 }));
-    addToShopping(items);
-  }, [filtered, effectiveCollection, addToShopping]);
-
-  const filteredNotOwnedCount = useMemo(
-    () => filtered.filter((c) => ownedCount(effectiveCollection, c.id) === 0).length,
-    [filtered, effectiveCollection],
-  );
-
   const shoppingCount = useMemo(
     () => Object.values(shoppingList).filter((e) => !e.checked).length,
     [shoppingList],
@@ -327,6 +315,18 @@ function App() {
     foilCollection,
     prices,
   ]);
+
+  const addFilteredNotOwnedToShopping = useCallback(() => {
+    const items = filtered
+      .filter((c) => ownedCount(effectiveCollection, c.id) === 0)
+      .map((c) => ({ cardId: c.id, qty: 1 }));
+    addToShopping(items);
+  }, [filtered, effectiveCollection, addToShopping]);
+
+  const filteredNotOwnedCount = useMemo(
+    () => filtered.filter((c) => ownedCount(effectiveCollection, c.id) === 0).length,
+    [filtered, effectiveCollection],
+  );
 
   const zoomIndex = useMemo(() => {
     if (!zoomCardId) return -1;
