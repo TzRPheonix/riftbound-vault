@@ -187,6 +187,20 @@ function App() {
     }
   }, []);
 
+  const updateShoppingQty = useCallback((cardId: string, delta: number) => {
+    setShoppingList((prev) => {
+      const entry = prev[cardId];
+      if (!entry) return prev;
+      const value = entry.qty + delta;
+      if (value <= 0) {
+        const next = { ...prev };
+        delete next[cardId];
+        return next;
+      }
+      return { ...prev, [cardId]: { ...entry, qty: value } };
+    });
+  }, []);
+
   const effectiveCollection = useMemo<Collection>(() => {
     const merged: Collection = { ...collection };
     for (const [id, qty] of Object.entries(foilCollection)) {
@@ -588,6 +602,7 @@ function App() {
             collection={effectiveCollection}
             prices={prices}
             onToggleChecked={toggleShoppingChecked}
+            onQtyChange={updateShoppingQty}
             onRemove={removeFromShopping}
             onClearChecked={clearCheckedShopping}
             onClearAll={clearShoppingList}

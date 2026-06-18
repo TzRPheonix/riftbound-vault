@@ -4,23 +4,10 @@ import { ownedCount } from '../lib/cards';
 import { FilterChecklist, type FilterChecklistOption } from './FilterChecklist';
 import './ShoppingListPanel.css';
 
-const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'showcase'] as const;
-
 const SORT_OPTIONS: FilterChecklistOption[] = [
-  { value: 'default', label: 'À acheter d\'abord' },
-  { value: 'name-asc', label: 'Nom A → Z' },
-  { value: 'name-desc', label: 'Nom Z → A' },
   { value: 'price-asc', label: 'Prix ↑' },
   { value: 'price-desc', label: 'Prix ↓' },
-  { value: 'set', label: 'Set / n°' },
-  { value: 'rarity-asc', label: 'Rareté ↑' },
-  { value: 'rarity-desc', label: 'Rareté ↓' },
 ];
-
-function rarityRank(rarity: string): number {
-  const idx = RARITY_ORDER.indexOf(rarity as (typeof RARITY_ORDER)[number]);
-  return idx >= 0 ? idx : RARITY_ORDER.length;
-}
 
 function formatPrice(amount: number, currency: string): string {
   return amount.toLocaleString('fr-FR', { style: 'currency', currency });
@@ -33,6 +20,7 @@ interface ShoppingListPanelProps {
   collection: Record<string, number>;
   prices: PriceMap;
   onToggleChecked: (cardId: string) => void;
+  onQtyChange: (cardId: string, delta: number) => void;
   onRemove: (cardId: string) => void;
   onClearChecked: () => void;
   onClearAll: () => void;
@@ -46,13 +34,14 @@ export function ShoppingListPanel({
   collection,
   prices,
   onToggleChecked,
+  onQtyChange,
   onRemove,
   onClearChecked,
   onClearAll,
   onAddNotOwned,
 }: ShoppingListPanelProps) {
   const [hideChecked, setHideChecked] = useState(false);
-  const [sortBy, setSortBy] = useState('default');
+  const [sortBy, setSortBy] = useState('');
 
   const notOwnedCount = useMemo(
     () => cards.filter((c) => ownedCount(collection, c.id) === 0).length,
@@ -74,36 +63,20 @@ export function ShoppingListPanel({
 
     const cmpName = (a: typeof items[0], b: typeof items[0]) =>
       a.card.name.localeCompare(b.card.name, 'fr');
-    const cmpPrice = (a: typeof items[0], b: typeof items[0], asc: boolean) => {
-      const pa = a.unitPrice ?? (asc ? Infinity : -Infinity);
-      const pb = b.unitPrice ?? (asc ? Infinity : -Infinity);
-      return asc ? pa - pb : pb - pa;
-    };
 
     items.sort((a, b) => {
-      switch (sortBy) {
-        case 'name-asc':
-          return cmpName(a, b);
-        case 'name-desc':
-          return cmpName(b, a);
-        case 'price-asc':
-          return cmpPrice(a, b, true) || cmpName(a, b);
-        case 'price-desc':
-          return cmpPrice(a, b, false) || cmpName(a, b);
-        case 'set':
-          return (
-            a.card.setName.localeCompare(b.card.setName, 'fr') ||
-            a.card.collectorNumber - b.card.collectorNumber ||
-            cmpName(a, b)
-          );
-        case 'rarity-asc':
-          return rarityRank(a.card.rarity) - rarityRank(b.card.rarity) || cmpName(a, b);
-        case 'rarity-desc':
-          return rarityRank(b.card.rarity) - rarityRank(a.card.rarity) || cmpName(a, b);
-        default:
-          if (a.entry.checked !== b.entry.checked) return a.entry.checked ? 1 : -1;
-          return cmpName(a, b);
+      if (sortBy === 'price-asc') {
+        const pa = a.unitPrice ?? Infinity;
+        const pb = b.unitPrice ?? Infinity;
+        return pa - pb || cmpName(a, b);
       }
+      if (sortBy === 'price-desc') {
+        const pa = a.unitPrice ?? -Infinity;
+        const pb = b.unitPrice ?? -Infinity;
+        return pb - pa || cmpName(a, b);
+      }
+      if (a.entry.checked !== b.entry.checked) return a.entry.checked ? 1 : -1;
+      return cmpName(a, b);
     });
 
     return hideChecked ? items.filter((x) => !x.entry.checked) : items;
@@ -115,11 +88,13 @@ export function ShoppingListPanel({
   );
 
   const stats = useMemo(() => {
-    let total = 0;
+    let lines = 0;
+    let copies = 0;
     let checked = 0;
     let estValue = 0;
     for (const [id, entry] of Object.entries(shoppingList)) {
-      total += 1;
+      lines += 1;
+      copies += entry.qty;
       if (entry.checked) checked += 1;
       else {
         const card = cardMap.get(id);
@@ -127,10 +102,10 @@ export function ShoppingListPanel({
         estValue += entry.qty * price;
       }
     }
-    return { total, checked, remaining: total - checked, estValue };
+    return { lines, copies, checked, remaining: lines - checked, estValue };
   }, [shoppingList, cardMap, prices]);
 
-  if (stats.total === 0) {
+  if (stats.lines === 0) {
     return (
       <div className="shopping-panel shopping-panel--empty">
         <div className="shopping-panel__empty-icon" aria-hidden>🛒</div>
@@ -157,10 +132,10 @@ export function ShoppingListPanel({
         <div>
           <h2 className="shopping-panel__title">Liste d&apos;achats</h2>
           <p className="shopping-panel__subtitle">
-            {stats.remaining} restante{stats.remaining !== 1 ? 's' : ''}
-            {stats.checked > 0 && ` · ${stats.checked} cochée${stats.checked !== 1 ? 's' : ''}`}
+            {stats.copies} exemplaire{stats.copies !== 1 ? 's' : ''}
+            {stats.remaining < stats.lines && ` · ${stats.remaining} ligne${stats.remaining !== 1 ? 's' : ''} restante${stats.remaining !== 1 ? 's' : ''}`}
             {stats.estValue > 0 && (
-              <> · ~{stats.estValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} estimé</>
+              <> · ~{formatPrice(stats.estValue, 'EUR')}</>
             )}
           </p>
         </div>
@@ -168,11 +143,11 @@ export function ShoppingListPanel({
           <div className="shopping-panel__progress-track">
             <div
               className="shopping-panel__progress-fill"
-              style={{ width: `${stats.total > 0 ? (stats.checked / stats.total) * 100 : 0}%` }}
+              style={{ width: `${stats.lines > 0 ? (stats.checked / stats.lines) * 100 : 0}%` }}
             />
           </div>
           <span className="shopping-panel__progress-label">
-            {stats.checked}/{stats.total}
+            {stats.checked}/{stats.lines}
           </span>
         </div>
       </header>
@@ -181,10 +156,10 @@ export function ShoppingListPanel({
         <div className="shopping-panel__toolbar-filters">
           <FilterChecklist
             label="Trier par"
-            values={sortBy !== 'default' ? [sortBy] : []}
+            values={sortBy ? [sortBy] : []}
             options={SORT_OPTIONS}
-            onChange={(v) => setSortBy(v[0] ?? 'default')}
-            emptyLabel="À acheter d'abord"
+            onChange={(v) => setSortBy(v[0] ?? '')}
+            emptyLabel="Par défaut"
             mode="single"
             className="shopping-panel__sort"
           />
@@ -214,12 +189,12 @@ export function ShoppingListPanel({
 
       <div className="shopping-list-header" aria-hidden>
         <span className="shopping-list-header__card">Carte</span>
-        <span className="shopping-list-header__unit">Prix unit.</span>
-        <span className="shopping-list-header__total">Total</span>
+        <span className="shopping-list-header__qty">Ex.</span>
+        <span className="shopping-list-header__price">Prix</span>
       </div>
 
       <ul className="shopping-list">
-        {entries.map(({ card, entry, unitPrice, lineTotal, currency }) => (
+        {entries.map(({ card, entry, lineTotal, currency }) => (
           <li
             key={card.id}
             className={`shopping-item ${entry.checked ? 'shopping-item--checked' : ''}`}
@@ -240,13 +215,28 @@ export function ShoppingListPanel({
               <span className="shopping-item__meta">
                 {card.code}
                 <span className="shopping-item__set">{card.setName}</span>
-                {entry.qty > 1 && <span className="shopping-item__qty">×{entry.qty}</span>}
               </span>
             </div>
-            <span className="shopping-item__unit-price">
-              {unitPrice != null ? formatPrice(unitPrice, currency) : '—'}
-            </span>
-            <span className="shopping-item__line-total">
+            <div className="shopping-item__qty-controls">
+              <button
+                type="button"
+                className="shopping-item__qty-btn"
+                onClick={() => onQtyChange(card.id, -1)}
+                aria-label={`Retirer un exemplaire de ${card.name}`}
+              >
+                −
+              </button>
+              <span className="shopping-item__qty-value">{entry.qty}</span>
+              <button
+                type="button"
+                className="shopping-item__qty-btn"
+                onClick={() => onQtyChange(card.id, 1)}
+                aria-label={`Ajouter un exemplaire de ${card.name}`}
+              >
+                +
+              </button>
+            </div>
+            <span className="shopping-item__price">
               {lineTotal != null ? formatPrice(lineTotal, currency) : '—'}
             </span>
             <button
@@ -269,7 +259,7 @@ export function ShoppingListPanel({
         </footer>
       )}
 
-      {entries.length === 0 && hideChecked && stats.checked === stats.total && (
+      {entries.length === 0 && hideChecked && stats.checked === stats.lines && (
         <p className="shopping-panel__all-done">Tout est coché ! Retire les cartes achetées ou décoche pour continuer.</p>
       )}
     </div>
