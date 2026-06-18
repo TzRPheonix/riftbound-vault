@@ -1,7 +1,30 @@
 import { useMemo, useState } from 'react';
 import type { Card, PriceMap, ShoppingList } from '../types';
 import { ownedCount } from '../lib/cards';
+import { FilterChecklist, type FilterChecklistOption } from './FilterChecklist';
 import './ShoppingListPanel.css';
+
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'showcase'] as const;
+
+const SORT_OPTIONS: FilterChecklistOption[] = [
+  { value: 'default', label: 'À acheter d\'abord' },
+  { value: 'name-asc', label: 'Nom A → Z' },
+  { value: 'name-desc', label: 'Nom Z → A' },
+  { value: 'price-asc', label: 'Prix ↑' },
+  { value: 'price-desc', label: 'Prix ↓' },
+  { value: 'set', label: 'Set / n°' },
+  { value: 'rarity-asc', label: 'Rareté ↑' },
+  { value: 'rarity-desc', label: 'Rareté ↓' },
+];
+
+function rarityRank(rarity: string): number {
+  const idx = RARITY_ORDER.indexOf(rarity as (typeof RARITY_ORDER)[number]);
+  return idx >= 0 ? idx : RARITY_ORDER.length;
+}
+
+function formatPrice(amount: number, currency: string): string {
+  return amount.toLocaleString('fr-FR', { style: 'currency', currency });
+}
 
 interface ShoppingListPanelProps {
   cards: Card[];
@@ -29,6 +52,7 @@ export function ShoppingListPanel({
   onAddNotOwned,
 }: ShoppingListPanelProps) {
   const [hideChecked, setHideChecked] = useState(false);
+  const [sortBy, setSortBy] = useState('default');
 
   const notOwnedCount = useMemo(
     () => cards.filter((c) => ownedCount(collection, c.id) === 0).length,
@@ -40,18 +64,55 @@ export function ShoppingListPanel({
       .map(([id, entry]) => {
         const card = cardMap.get(id);
         if (!card) return null;
-        const price = prices[card.code]?.lowest ?? null;
-        return { card, entry, price };
+        const cardPrice = prices[card.code];
+        const unitPrice = cardPrice?.lowest ?? null;
+        const currency = cardPrice?.currency ?? 'EUR';
+        const lineTotal = unitPrice != null ? unitPrice * entry.qty : null;
+        return { card, entry, unitPrice, lineTotal, currency };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
 
+    const cmpName = (a: typeof items[0], b: typeof items[0]) =>
+      a.card.name.localeCompare(b.card.name, 'fr');
+    const cmpPrice = (a: typeof items[0], b: typeof items[0], asc: boolean) => {
+      const pa = a.unitPrice ?? (asc ? Infinity : -Infinity);
+      const pb = b.unitPrice ?? (asc ? Infinity : -Infinity);
+      return asc ? pa - pb : pb - pa;
+    };
+
     items.sort((a, b) => {
-      if (a.entry.checked !== b.entry.checked) return a.entry.checked ? 1 : -1;
-      return a.card.name.localeCompare(b.card.name, 'fr');
+      switch (sortBy) {
+        case 'name-asc':
+          return cmpName(a, b);
+        case 'name-desc':
+          return cmpName(b, a);
+        case 'price-asc':
+          return cmpPrice(a, b, true) || cmpName(a, b);
+        case 'price-desc':
+          return cmpPrice(a, b, false) || cmpName(a, b);
+        case 'set':
+          return (
+            a.card.setName.localeCompare(b.card.setName, 'fr') ||
+            a.card.collectorNumber - b.card.collectorNumber ||
+            cmpName(a, b)
+          );
+        case 'rarity-asc':
+          return rarityRank(a.card.rarity) - rarityRank(b.card.rarity) || cmpName(a, b);
+        case 'rarity-desc':
+          return rarityRank(b.card.rarity) - rarityRank(a.card.rarity) || cmpName(a, b);
+        default:
+          if (a.entry.checked !== b.entry.checked) return a.entry.checked ? 1 : -1;
+          return cmpName(a, b);
+      }
     });
 
     return hideChecked ? items.filter((x) => !x.entry.checked) : items;
-  }, [shoppingList, cardMap, prices, hideChecked]);
+  }, [shoppingList, cardMap, prices, hideChecked, sortBy]);
+
+  const visibleTotal = useMemo(
+    () => entries.reduce((sum, { lineTotal, entry }) => sum + (entry.checked ? 0 : lineTotal ?? 0), 0),
+    [entries],
+  );
 
   const stats = useMemo(() => {
     let total = 0;
@@ -117,14 +178,25 @@ export function ShoppingListPanel({
       </header>
 
       <div className="shopping-panel__toolbar">
-        <label className="shopping-panel__toggle">
-          <input
-            type="checkbox"
-            checked={hideChecked}
-            onChange={(e) => setHideChecked(e.target.checked)}
+        <div className="shopping-panel__toolbar-filters">
+          <FilterChecklist
+            label="Trier par"
+            values={sortBy !== 'default' ? [sortBy] : []}
+            options={SORT_OPTIONS}
+            onChange={(v) => setSortBy(v[0] ?? 'default')}
+            emptyLabel="À acheter d'abord"
+            mode="single"
+            className="shopping-panel__sort"
           />
-          Masquer les cochées
-        </label>
+          <label className="shopping-panel__toggle">
+            <input
+              type="checkbox"
+              checked={hideChecked}
+              onChange={(e) => setHideChecked(e.target.checked)}
+            />
+            Masquer les cochées
+          </label>
+        </div>
         <div className="shopping-panel__toolbar-actions">
           <button type="button" className="btn btn--ghost btn--sm" onClick={onAddNotOwned}>
             + Non possédées ({notOwnedCount})
@@ -140,8 +212,14 @@ export function ShoppingListPanel({
         </div>
       </div>
 
+      <div className="shopping-list-header" aria-hidden>
+        <span className="shopping-list-header__card">Carte</span>
+        <span className="shopping-list-header__unit">Prix unit.</span>
+        <span className="shopping-list-header__total">Total</span>
+      </div>
+
       <ul className="shopping-list">
-        {entries.map(({ card, entry, price }) => (
+        {entries.map(({ card, entry, unitPrice, lineTotal, currency }) => (
           <li
             key={card.id}
             className={`shopping-item ${entry.checked ? 'shopping-item--checked' : ''}`}
@@ -161,17 +239,16 @@ export function ShoppingListPanel({
               <span className="shopping-item__name">{card.name}</span>
               <span className="shopping-item__meta">
                 {card.code}
+                <span className="shopping-item__set">{card.setName}</span>
                 {entry.qty > 1 && <span className="shopping-item__qty">×{entry.qty}</span>}
-                {price != null && (
-                  <span className="shopping-item__price">
-                    {(price * entry.qty).toLocaleString('fr-FR', {
-                      style: 'currency',
-                      currency: prices[card.code]?.currency ?? 'EUR',
-                    })}
-                  </span>
-                )}
               </span>
             </div>
+            <span className="shopping-item__unit-price">
+              {unitPrice != null ? formatPrice(unitPrice, currency) : '—'}
+            </span>
+            <span className="shopping-item__line-total">
+              {lineTotal != null ? formatPrice(lineTotal, currency) : '—'}
+            </span>
             <button
               type="button"
               className="shopping-item__remove"
@@ -184,6 +261,13 @@ export function ShoppingListPanel({
           </li>
         ))}
       </ul>
+
+      {entries.length > 0 && visibleTotal > 0 && (
+        <footer className="shopping-panel__footer">
+          <span>Total affiché (non cochées)</span>
+          <strong>{formatPrice(visibleTotal, 'EUR')}</strong>
+        </footer>
+      )}
 
       {entries.length === 0 && hideChecked && stats.checked === stats.total && (
         <p className="shopping-panel__all-done">Tout est coché ! Retire les cartes achetées ou décoche pour continuer.</p>
