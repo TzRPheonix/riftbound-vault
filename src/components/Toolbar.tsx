@@ -61,6 +61,7 @@ interface ToolbarProps {
   quickAdd: boolean;
   onQuickAddChange: (v: boolean) => void;
   sets: { id: string; name: string }[];
+  mode?: 'collection' | 'shopping';
 }
 
 export function Toolbar({
@@ -96,6 +97,7 @@ export function Toolbar({
   quickAdd,
   onQuickAddChange,
   sets,
+  mode = 'collection',
 }: ToolbarProps) {
   const setOptions: FilterChecklistOption[] = sets.map((s) => ({
     value: s.id,
@@ -215,7 +217,14 @@ export function Toolbar({
             />
 
             <div className="toolbar__toggles">
-              <label className="toolbar__toggle" title="Un clic sur une carte l'ajoute à la collection">
+              <label
+                className="toolbar__toggle"
+                title={
+                  mode === 'shopping'
+                    ? 'Un clic sur une carte l\'ajoute à la liste d\'achats'
+                    : 'Un clic sur une carte l\'ajoute à la collection'
+                }
+              >
                 <input
                   type="checkbox"
                   checked={quickAdd}

@@ -190,7 +190,10 @@ function App() {
   const updateShoppingQty = useCallback((cardId: string, delta: number) => {
     setShoppingList((prev) => {
       const entry = prev[cardId];
-      if (!entry) return prev;
+      if (!entry) {
+        if (delta <= 0) return prev;
+        return { ...prev, [cardId]: { checked: false, qty: delta } };
+      }
       const value = entry.qty + delta;
       if (value <= 0) {
         const next = { ...prev };
@@ -209,12 +212,17 @@ function App() {
     return merged;
   }, [collection, foilCollection]);
 
-  const addAllNotOwnedToShopping = useCallback(() => {
-    const items = cards
+  const addFilteredNotOwnedToShopping = useCallback(() => {
+    const items = filtered
       .filter((c) => ownedCount(effectiveCollection, c.id) === 0)
       .map((c) => ({ cardId: c.id, qty: 1 }));
     addToShopping(items);
-  }, [cards, effectiveCollection, addToShopping]);
+  }, [filtered, effectiveCollection, addToShopping]);
+
+  const filteredNotOwnedCount = useMemo(
+    () => filtered.filter((c) => ownedCount(effectiveCollection, c.id) === 0).length,
+    [filtered, effectiveCollection],
+  );
 
   const shoppingCount = useMemo(
     () => Object.values(shoppingList).filter((e) => !e.checked).length,
@@ -421,6 +429,50 @@ function App() {
     }
   };
 
+  const renderToolbar = (mode: 'collection' | 'shopping') => (
+    <Toolbar
+      mode={mode}
+      search={search}
+      onSearchChange={setSearch}
+      setFilters={setFilters}
+      onSetFiltersChange={setSetFilters}
+      domainFilters={domainFilters}
+      onDomainFiltersChange={setDomainFilters}
+      typeFilters={typeFilters}
+      onTypeFiltersChange={setTypeFilters}
+      rarityFilters={rarityFilters}
+      onRarityFiltersChange={setRarityFilters}
+      rarities={rarities}
+      energyFilters={energyFilters}
+      onEnergyFiltersChange={setEnergyFilters}
+      mightFilters={mightFilters}
+      onMightFiltersChange={setMightFilters}
+      energyValues={energyValues}
+      mightValues={mightValues}
+      sacrificeFilters={sacrificeFilters}
+      onSacrificeFiltersChange={setSacrificeFilters}
+      sacrificeValues={sacrificeValues}
+      relevance={filterRelevance}
+      ownedOnly={ownedOnly}
+      onOwnedOnlyChange={(v) => {
+        setOwnedOnly(v);
+        if (v) setNotOwnedOnly(false);
+      }}
+      notOwnedOnly={notOwnedOnly}
+      onNotOwnedOnlyChange={(v) => {
+        setNotOwnedOnly(v);
+        if (v) setOwnedOnly(false);
+      }}
+      foilOnly={foilOnly}
+      onFoilOnlyChange={setFoilOnly}
+      sortBy={sortBy}
+      onSortChange={setSortBy}
+      quickAdd={quickAdd}
+      onQuickAddChange={setQuickAdd}
+      sets={sets}
+    />
+  );
+
   if (loading) {
     return (
       <div className="app app--loading">
@@ -506,46 +558,7 @@ function App() {
       <main className="app-main">
         {tab === 'collection' ? (
           <>
-            <Toolbar
-              search={search}
-              onSearchChange={setSearch}
-              setFilters={setFilters}
-              onSetFiltersChange={setSetFilters}
-              domainFilters={domainFilters}
-              onDomainFiltersChange={setDomainFilters}
-              typeFilters={typeFilters}
-              onTypeFiltersChange={setTypeFilters}
-              rarityFilters={rarityFilters}
-              onRarityFiltersChange={setRarityFilters}
-              rarities={rarities}
-              energyFilters={energyFilters}
-              onEnergyFiltersChange={setEnergyFilters}
-              mightFilters={mightFilters}
-              onMightFiltersChange={setMightFilters}
-              energyValues={energyValues}
-              mightValues={mightValues}
-              sacrificeFilters={sacrificeFilters}
-              onSacrificeFiltersChange={setSacrificeFilters}
-              sacrificeValues={sacrificeValues}
-              relevance={filterRelevance}
-              ownedOnly={ownedOnly}
-              onOwnedOnlyChange={(v) => {
-                setOwnedOnly(v);
-                if (v) setNotOwnedOnly(false);
-              }}
-              notOwnedOnly={notOwnedOnly}
-              onNotOwnedOnlyChange={(v) => {
-                setNotOwnedOnly(v);
-                if (v) setOwnedOnly(false);
-              }}
-              foilOnly={foilOnly}
-              onFoilOnlyChange={setFoilOnly}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              quickAdd={quickAdd}
-              onQuickAddChange={setQuickAdd}
-              sets={sets}
-            />
+            {renderToolbar('collection')}
             <CollectionStats
               totalOwned={totalOwned}
               uniqueOwned={uniqueOwned}
@@ -595,19 +608,51 @@ function App() {
             onAddMissingToShopping={(items) => addToShopping(items)}
           />
         ) : (
-          <ShoppingListPanel
-            cards={cards}
-            cardMap={cardMap}
-            shoppingList={shoppingList}
-            collection={effectiveCollection}
-            prices={prices}
-            onToggleChecked={toggleShoppingChecked}
-            onQtyChange={updateShoppingQty}
-            onRemove={removeFromShopping}
-            onClearChecked={clearCheckedShopping}
-            onClearAll={clearShoppingList}
-            onAddNotOwned={addAllNotOwnedToShopping}
-          />
+          <>
+            {renderToolbar('shopping')}
+            <ShoppingListPanel
+              cardMap={cardMap}
+              shoppingList={shoppingList}
+              collection={effectiveCollection}
+              prices={prices}
+              cardFilters={cardFilters}
+              ownedOnly={ownedOnly}
+              notOwnedOnly={notOwnedOnly}
+              sortBy={sortBy}
+              filteredNotOwnedCount={filteredNotOwnedCount}
+              onToggleChecked={toggleShoppingChecked}
+              onQtyChange={updateShoppingQty}
+              onRemove={removeFromShopping}
+              onClearChecked={clearCheckedShopping}
+              onClearAll={clearShoppingList}
+              onAddFilteredNotOwned={addFilteredNotOwnedToShopping}
+            />
+            <div className="shopping-browse">
+              <p className="results-count">
+                {filtered.length} cartes ·{' '}
+                {quickAdd
+                  ? 'clique sur une carte pour l\'ajouter à la liste'
+                  : 'survol pour + / − exemplaires · clique pour agrandir'}
+              </p>
+              <div
+                className={`card-grid${gridMode === 'battlefields' ? ' card-grid--battlefields' : gridMode === 'mixed' ? ' card-grid--mixed' : ''}`}
+              >
+                {filtered.map((card) => (
+                  <CardTile
+                    key={card.id}
+                    card={card}
+                    owned={ownedCount(collection, card.id)}
+                    price={prices[card.code]}
+                    onChange={(d) => updateShoppingQty(card.id, d)}
+                    quickAdd={quickAdd}
+                    onOpen={() => setZoomCardId(card.id)}
+                    listMode="shopping"
+                    shoppingQty={shoppingList[card.id]?.qty ?? 0}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </main>
 

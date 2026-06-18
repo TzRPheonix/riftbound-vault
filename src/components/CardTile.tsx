@@ -16,6 +16,8 @@ interface CardTileProps {
   onOpen?: () => void;
   inShoppingList?: boolean;
   onToggleShopping?: () => void;
+  listMode?: 'collection' | 'shopping';
+  shoppingQty?: number;
 }
 
 export function CardTile({
@@ -31,11 +33,16 @@ export function CardTile({
   onOpen,
   inShoppingList = false,
   onToggleShopping,
+  listMode = 'collection',
+  shoppingQty = 0,
 }: CardTileProps) {
   const primaryDomain = card.domains[0];
   const accent = primaryDomain ? DOMAIN_COLORS[primaryDomain] : '#c9a227';
   const landscape = isLandscapeCard(card);
   const layout = landscape ? 'landscape' : 'portrait';
+  const isShopping = listMode === 'shopping';
+  const listQty = isShopping ? shoppingQty : owned;
+  const showListBadge = isShopping ? shoppingQty > 0 : owned > 0 || foil > 0;
 
   const handleTileClick = () => {
     if (quickAdd) onChange(1);
@@ -44,7 +51,7 @@ export function CardTile({
 
   return (
     <article
-      className={`card-tile ${landscape ? 'card-tile--landscape' : ''} ${compact ? 'card-tile--compact' : ''} ${selected ? 'card-tile--selected' : ''} ${owned > 0 ? 'card-tile--owned' : ''} ${foil > 0 ? 'card-tile--foil' : ''} ${quickAdd ? 'card-tile--quick-add' : 'card-tile--zoomable'}`}
+      className={`card-tile ${landscape ? 'card-tile--landscape' : ''} ${compact ? 'card-tile--compact' : ''} ${selected ? 'card-tile--selected' : ''} ${!isShopping && owned > 0 ? 'card-tile--owned' : ''} ${isShopping && shoppingQty > 0 ? 'card-tile--in-list' : ''} ${foil > 0 ? 'card-tile--foil' : ''} ${quickAdd ? 'card-tile--quick-add' : 'card-tile--zoomable'}`}
       data-layout={layout}
       style={{ '--card-accent': accent } as CSSProperties}
       onClick={handleTileClick}
@@ -63,13 +70,15 @@ export function CardTile({
         )}
         <div className="card-tile__shine" aria-hidden />
         {foil > 0 && <div className="card-tile__holo" aria-hidden />}
-        {(owned > 0 || foil > 0) && (
+        {showListBadge && (
           <div className="card-tile__badges">
-            {foil > 0 && <span className="card-tile__foil-badge">✦ {foil}</span>}
-            <span className="card-tile__badge">{owned + foil}</span>
+            {!isShopping && foil > 0 && <span className="card-tile__foil-badge">✦ {foil}</span>}
+            <span className={`card-tile__badge ${isShopping ? 'card-tile__badge--list' : ''}`}>
+              {isShopping ? shoppingQty : owned + foil}
+            </span>
           </div>
         )}
-        {onToggleShopping && (
+        {!isShopping && onToggleShopping && (
           <button
             type="button"
             className={`card-tile__cart ${inShoppingList ? 'card-tile__cart--active' : ''}`}
@@ -103,11 +112,11 @@ export function CardTile({
 
       <div className="card-tile__controls" onClick={(e) => e.stopPropagation()}>
         <div className="qty-row">
-          <button type="button" className="qty-btn" onClick={() => onChange(-1)} disabled={owned <= 0}>−</button>
-          <span className="qty-value">{owned}</span>
+          <button type="button" className="qty-btn" onClick={() => onChange(-1)} disabled={listQty <= 0}>−</button>
+          <span className={`qty-value ${isShopping ? 'qty-value--list' : ''}`}>{listQty}</span>
           <button type="button" className="qty-btn" onClick={() => onChange(1)}>+</button>
         </div>
-        {onFoilChange && (
+        {!isShopping && onFoilChange && (
           <div className="qty-row qty-row--foil">
             <button type="button" className="qty-btn qty-btn--foil" onClick={() => onFoilChange(-1)} disabled={foil <= 0}>−</button>
             <span className="qty-value qty-value--foil">✦{foil}</span>

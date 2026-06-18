@@ -177,6 +177,12 @@
   }
 }
 
+.shopping-browse {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(201, 162, 39, 0.15);
+}
+
 .app-footer {
   margin-top: 2rem;
   padding-top: 1.5rem;

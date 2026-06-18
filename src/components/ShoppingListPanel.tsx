@@ -1,56 +1,66 @@
 import { useMemo, useState } from 'react';
-import type { Card, PriceMap, ShoppingList } from '../types';
-import { ownedCount } from '../lib/cards';
-import { FilterChecklist, type FilterChecklistOption } from './FilterChecklist';
+import type { Card, Collection, PriceMap, ShoppingList } from '../types';
+import { filterCards, ownedCount, type CardFilterState } from '../lib/cards';
 import './ShoppingListPanel.css';
-
-const SORT_OPTIONS: FilterChecklistOption[] = [
-  { value: 'price-asc', label: 'Prix ↑' },
-  { value: 'price-desc', label: 'Prix ↓' },
-];
 
 function formatPrice(amount: number, currency: string): string {
   return amount.toLocaleString('fr-FR', { style: 'currency', currency });
 }
 
 interface ShoppingListPanelProps {
-  cards: Card[];
   cardMap: Map<string, Card>;
   shoppingList: ShoppingList;
-  collection: Record<string, number>;
+  collection: Collection;
   prices: PriceMap;
+  cardFilters: CardFilterState;
+  ownedOnly: boolean;
+  notOwnedOnly: boolean;
+  sortBy: string;
+  filteredNotOwnedCount: number;
   onToggleChecked: (cardId: string) => void;
   onQtyChange: (cardId: string, delta: number) => void;
   onRemove: (cardId: string) => void;
   onClearChecked: () => void;
   onClearAll: () => void;
-  onAddNotOwned: () => void;
+  onAddFilteredNotOwned: () => void;
 }
 
 export function ShoppingListPanel({
-  cards,
   cardMap,
   shoppingList,
   collection,
   prices,
+  cardFilters,
+  ownedOnly,
+  notOwnedOnly,
+  sortBy,
+  filteredNotOwnedCount,
   onToggleChecked,
   onQtyChange,
   onRemove,
   onClearChecked,
   onClearAll,
-  onAddNotOwned,
+  onAddFilteredNotOwned,
 }: ShoppingListPanelProps) {
   const [hideChecked, setHideChecked] = useState(false);
-  const [sortBy, setSortBy] = useState('');
-
-  const notOwnedCount = useMemo(
-    () => cards.filter((c) => ownedCount(collection, c.id) === 0).length,
-    [cards, collection],
-  );
 
   const entries = useMemo(() => {
+    const listCards = Object.keys(shoppingList)
+      .map((id) => cardMap.get(id))
+      .filter((c): c is Card => !!c);
+
+    const matchingIds = new Set(
+      filterCards(listCards, {
+        ...cardFilters,
+        ownedOnly,
+        notOwnedOnly,
+        collection,
+      }).map((c) => c.id),
+    );
+
     const items = Object.entries(shoppingList)
       .map(([id, entry]) => {
+        if (!matchingIds.has(id)) return null;
         const card = cardMap.get(id);
         if (!card) return null;
         const cardPrice = prices[card.code];
@@ -80,7 +90,7 @@ export function ShoppingListPanel({
     });
 
     return hideChecked ? items.filter((x) => !x.entry.checked) : items;
-  }, [shoppingList, cardMap, prices, hideChecked, sortBy]);
+  }, [shoppingList, cardMap, prices, hideChecked, sortBy, cardFilters, ownedOnly, notOwnedOnly, collection]);
 
   const visibleTotal = useMemo(
     () => entries.reduce((sum, { lineTotal, entry }) => sum + (entry.checked ? 0 : lineTotal ?? 0), 0),
@@ -105,26 +115,19 @@ export function ShoppingListPanel({
     return { lines, copies, checked, remaining: lines - checked, estValue };
   }, [shoppingList, cardMap, prices]);
 
-  if (stats.lines === 0) {
-    return (
-      <div className="shopping-panel shopping-panel--empty">
-        <div className="shopping-panel__empty-icon" aria-hidden>🛒</div>
-        <h2 className="shopping-panel__empty-title">Liste d&apos;achats vide</h2>
-        <p className="shopping-panel__empty-text">
-          Ajoute des cartes manquantes pour préparer tes achats sur Cardmarket, eBay, etc.
-          Cocher une carte ne l&apos;ajoute pas à ta collection — pense à mettre à jour tes quantités après achat.
-        </p>
-        <div className="shopping-panel__empty-actions">
-          <button type="button" className="btn btn--ghost" onClick={onAddNotOwned}>
-            Ajouter toutes les cartes non possédées ({notOwnedCount})
-          </button>
-        </div>
-        <p className="shopping-panel__hint">
-          Tu peux aussi ajouter des cartes depuis l&apos;onglet Collection (icône panier) ou Meta Decks (bouton « manquantes »).
-        </p>
-      </div>
-    );
-  }
+  const matchingCount = useMemo(() => {
+    const listCards = Object.keys(shoppingList)
+      .map((id) => cardMap.get(id))
+      .filter((c): c is Card => !!c);
+    return filterCards(listCards, {
+      ...cardFilters,
+      ownedOnly,
+      notOwnedOnly,
+      collection,
+    }).length;
+  }, [shoppingList, cardMap, cardFilters, ownedOnly, notOwnedOnly, collection]);
+
+  const hiddenByFilters = stats.lines - matchingCount;
 
   return (
     <div className="shopping-panel">
@@ -132,135 +135,151 @@ export function ShoppingListPanel({
         <div>
           <h2 className="shopping-panel__title">Liste d&apos;achats</h2>
           <p className="shopping-panel__subtitle">
-            {stats.copies} exemplaire{stats.copies !== 1 ? 's' : ''}
-            {stats.remaining < stats.lines && ` · ${stats.remaining} ligne${stats.remaining !== 1 ? 's' : ''} restante${stats.remaining !== 1 ? 's' : ''}`}
-            {stats.estValue > 0 && (
-              <> · ~{formatPrice(stats.estValue, 'EUR')}</>
+            {stats.lines === 0 ? (
+              'Aucune carte — parcours la galerie ci-dessous pour en ajouter'
+            ) : (
+              <>
+                {stats.copies} exemplaire{stats.copies !== 1 ? 's' : ''}
+                {stats.remaining < stats.lines && ` · ${stats.remaining} ligne${stats.remaining !== 1 ? 's' : ''} restante${stats.remaining !== 1 ? 's' : ''}`}
+                {stats.estValue > 0 && <> · ~{formatPrice(stats.estValue, 'EUR')}</>}
+              </>
             )}
           </p>
         </div>
-        <div className="shopping-panel__progress">
-          <div className="shopping-panel__progress-track">
-            <div
-              className="shopping-panel__progress-fill"
-              style={{ width: `${stats.lines > 0 ? (stats.checked / stats.lines) * 100 : 0}%` }}
-            />
+        {stats.lines > 0 && (
+          <div className="shopping-panel__progress">
+            <div className="shopping-panel__progress-track">
+              <div
+                className="shopping-panel__progress-fill"
+                style={{ width: `${stats.lines > 0 ? (stats.checked / stats.lines) * 100 : 0}%` }}
+              />
+            </div>
+            <span className="shopping-panel__progress-label">
+              {stats.checked}/{stats.lines}
+            </span>
           </div>
-          <span className="shopping-panel__progress-label">
-            {stats.checked}/{stats.lines}
-          </span>
-        </div>
+        )}
       </header>
 
       <div className="shopping-panel__toolbar">
-        <div className="shopping-panel__toolbar-filters">
-          <FilterChecklist
-            label="Trier par"
-            values={sortBy ? [sortBy] : []}
-            options={SORT_OPTIONS}
-            onChange={(v) => setSortBy(v[0] ?? '')}
-            emptyLabel="Par défaut"
-            mode="single"
-            className="shopping-panel__sort"
+        <label className="shopping-panel__toggle">
+          <input
+            type="checkbox"
+            checked={hideChecked}
+            onChange={(e) => setHideChecked(e.target.checked)}
           />
-          <label className="shopping-panel__toggle">
-            <input
-              type="checkbox"
-              checked={hideChecked}
-              onChange={(e) => setHideChecked(e.target.checked)}
-            />
-            Masquer les cochées
-          </label>
-        </div>
+          Masquer les cochées
+        </label>
         <div className="shopping-panel__toolbar-actions">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onAddNotOwned}>
-            + Non possédées ({notOwnedCount})
+          <button type="button" className="btn btn--ghost btn--sm" onClick={onAddFilteredNotOwned}>
+            + Filtre non possédées ({filteredNotOwnedCount})
           </button>
           {stats.checked > 0 && (
             <button type="button" className="btn btn--ghost btn--sm" onClick={onClearChecked}>
               Retirer les cochées
             </button>
           )}
-          <button type="button" className="btn btn--danger btn--sm" onClick={onClearAll}>
-            Vider la liste
-          </button>
+          {stats.lines > 0 && (
+            <button type="button" className="btn btn--danger btn--sm" onClick={onClearAll}>
+              Vider la liste
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="shopping-list-header" aria-hidden>
-        <span className="shopping-list-header__card">Carte</span>
-        <span className="shopping-list-header__qty">Ex.</span>
-        <span className="shopping-list-header__price">Prix</span>
-      </div>
+      {stats.lines === 0 ? (
+        <p className="shopping-panel__empty-hint">
+          Utilise les filtres ci-dessus puis clique sur une carte ou le panier pour l&apos;ajouter.
+          Cocher une carte ne l&apos;ajoute pas à ta collection.
+        </p>
+      ) : entries.length === 0 ? (
+        <p className="shopping-panel__empty-hint">
+          Aucune carte de la liste ne correspond aux filtres actifs.
+        </p>
+      ) : (
+        <>
+          {hiddenByFilters > 0 && (
+            <p className="shopping-panel__filter-note">
+              {matchingCount} carte{matchingCount !== 1 ? 's' : ''} de la liste correspondent aux filtres ({hiddenByFilters} masquée{hiddenByFilters !== 1 ? 's' : ''})
+            </p>
+          )}
 
-      <ul className="shopping-list">
-        {entries.map(({ card, entry, lineTotal, currency }) => (
-          <li
-            key={card.id}
-            className={`shopping-item ${entry.checked ? 'shopping-item--checked' : ''}`}
-          >
-            <label className="shopping-item__check">
-              <input
-                type="checkbox"
-                checked={entry.checked}
-                onChange={() => onToggleChecked(card.id)}
-              />
-              <span className="shopping-item__checkmark" />
-            </label>
-            {card.image && (
-              <img className="shopping-item__thumb" src={card.image} alt="" loading="lazy" />
-            )}
-            <div className="shopping-item__info">
-              <span className="shopping-item__name">{card.name}</span>
-              <span className="shopping-item__meta">
-                {card.code}
-                <span className="shopping-item__set">{card.setName}</span>
-              </span>
-            </div>
-            <div className="shopping-item__qty-controls">
-              <button
-                type="button"
-                className="shopping-item__qty-btn"
-                onClick={() => onQtyChange(card.id, -1)}
-                aria-label={`Retirer un exemplaire de ${card.name}`}
+          <div className="shopping-list-header" aria-hidden>
+            <span className="shopping-list-header__card">Carte</span>
+            <span className="shopping-list-header__qty">Ex.</span>
+            <span className="shopping-list-header__price">Prix</span>
+          </div>
+
+          <ul className="shopping-list">
+            {entries.map(({ card, entry, lineTotal, currency }) => (
+              <li
+                key={card.id}
+                className={`shopping-item ${entry.checked ? 'shopping-item--checked' : ''}`}
               >
-                −
-              </button>
-              <span className="shopping-item__qty-value">{entry.qty}</span>
-              <button
-                type="button"
-                className="shopping-item__qty-btn"
-                onClick={() => onQtyChange(card.id, 1)}
-                aria-label={`Ajouter un exemplaire de ${card.name}`}
-              >
-                +
-              </button>
-            </div>
-            <span className="shopping-item__price">
-              {lineTotal != null ? formatPrice(lineTotal, currency) : '—'}
-            </span>
-            <button
-              type="button"
-              className="shopping-item__remove"
-              onClick={() => onRemove(card.id)}
-              title="Retirer de la liste"
-              aria-label={`Retirer ${card.name} de la liste`}
-            >
-              ×
-            </button>
-          </li>
-        ))}
-      </ul>
+                <label className="shopping-item__check">
+                  <input
+                    type="checkbox"
+                    checked={entry.checked}
+                    onChange={() => onToggleChecked(card.id)}
+                  />
+                  <span className="shopping-item__checkmark" />
+                </label>
+                {card.image && (
+                  <img className="shopping-item__thumb" src={card.image} alt="" loading="lazy" />
+                )}
+                <div className="shopping-item__info">
+                  <span className="shopping-item__name">{card.name}</span>
+                  <span className="shopping-item__meta">
+                    {card.code}
+                    <span className="shopping-item__set">{card.setName}</span>
+                  </span>
+                </div>
+                <div className="shopping-item__qty-controls">
+                  <button
+                    type="button"
+                    className="shopping-item__qty-btn"
+                    onClick={() => onQtyChange(card.id, -1)}
+                    aria-label={`Retirer un exemplaire de ${card.name}`}
+                  >
+                    −
+                  </button>
+                  <span className="shopping-item__qty-value">{entry.qty}</span>
+                  <button
+                    type="button"
+                    className="shopping-item__qty-btn"
+                    onClick={() => onQtyChange(card.id, 1)}
+                    aria-label={`Ajouter un exemplaire de ${card.name}`}
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="shopping-item__price">
+                  {lineTotal != null ? formatPrice(lineTotal, currency) : '—'}
+                </span>
+                <button
+                  type="button"
+                  className="shopping-item__remove"
+                  onClick={() => onRemove(card.id)}
+                  title="Retirer de la liste"
+                  aria-label={`Retirer ${card.name} de la liste`}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
 
-      {entries.length > 0 && visibleTotal > 0 && (
-        <footer className="shopping-panel__footer">
-          <span>Total affiché (non cochées)</span>
-          <strong>{formatPrice(visibleTotal, 'EUR')}</strong>
-        </footer>
-      )}
+          {visibleTotal > 0 && (
+            <footer className="shopping-panel__footer">
+              <span>Total affiché (non cochées)</span>
+              <strong>{formatPrice(visibleTotal, 'EUR')}</strong>
+            </footer>
+          )}
 
-      {entries.length === 0 && hideChecked && stats.checked === stats.lines && (
-        <p className="shopping-panel__all-done">Tout est coché ! Retire les cartes achetées ou décoche pour continuer.</p>
+          {hideChecked && stats.checked === stats.lines && (
+            <p className="shopping-panel__all-done">Tout est coché ! Retire les cartes achetées ou décoche pour continuer.</p>
+          )}
+        </>
       )}
     </div>
   );

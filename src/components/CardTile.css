@@ -121,6 +121,20 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
+.card-tile--in-list .card-tile__frame {
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(111, 200, 122, 0.35);
+}
+
+.card-tile__badge--list {
+  background: linear-gradient(180deg, #8fd4a0 0%, #3da85c 100%);
+}
+
+.qty-value--list {
+  color: #8fd4a0;
+}
+
 .card-tile__cart {
   position: absolute;
   top: 6px;
